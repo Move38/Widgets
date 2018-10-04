@@ -9,9 +9,6 @@ bool isAnimating = false;
 Timer animTimer;
 byte animFrame = 0;
 
-////COMMUNICATION VARIABLES
-
-
 ////WIDGET SPECIFIC VARIABLES
 Color spinnerColors[6] = {RED, ORANGE, YELLOW, GREEN, BLUE, MAGENTA};
 int spinInterval = 25;
@@ -68,6 +65,11 @@ void loop() {
   if (inChooser) {
     osLoop();
   } else {
+    //before the loops, update goSignal if we're not exempt
+    if (goSignal != EXEMPT) {
+      goSignalLoop();
+    }
+    //now run the loops
     switch (currentWidget) {
       case COIN:
         coinLoop();
@@ -167,15 +169,39 @@ void nextWidget() {
   }
 }
 
+void goSignalLoop() {
+  byte currentSignal = goSignal;//this is to avoid the loops automatically completing
+  switch (currentSignal) {
+    case INERT:
+      if (goCheck() == true) {
+        goSignal = GOING;
+      }
+      break;
+    case GOING:
+      if (resolveCheck() == true) {
+        goSignal = RESOLVING;
+      }
+      break;
+    case RESOLVING:
+      if (inertCheck() == true) {
+        goSignal = INERT;
+      }
+      break;
+  }
+}
+
 ////////////////
 //WIDGET LOOPS//
 ////////////////
 
 void coinLoop() {
-  if (buttonSingleClicked()) {
-    if (!isAnimating) {
+
+  if (!isAnimating) {
+    //there are two ways to start flipping: get clicked or be commanded
+    if (buttonSingleClicked() || goSignal == GOING) {//were we clicked?
       isAnimating = true;
       animFrame = 20 + rand(1);
+      goSignal = GOING;
     }
   }
 
@@ -198,9 +224,14 @@ void coinLoop() {
 }
 
 void d6Loop() {
-  if (buttonSingleClicked() && !isAnimating) { //roll!
-    isAnimating = true;
-    animFrame = 0;
+
+  if (!isAnimating) {
+    //there are two ways to start rolling: get clicked or be commanded
+    if (buttonSingleClicked() || goSignal == GOING) {//were we clicked?
+      isAnimating = true;
+      animFrame = 0;
+      goSignal = GOING;
+    }
   }
 
   if (isAnimating) {
@@ -210,19 +241,23 @@ void d6Loop() {
       animFrame ++;
       animTimer.set(75);
     }
-  }
 
-  if (animFrame == 15) {
-    isAnimating = false;
+    if (animFrame == 15) {
+      isAnimating = false;
+    }
   }
 }
 
 void spinnerLoop() {
-  if (buttonSingleClicked() && !isAnimating) {
-    isAnimating = true;
-    spinLength = rand(5) + 36;
-    spinInterval = 25;
-    animFrame = 0;
+  if (!isAnimating) {
+    //there are two ways to start spinning: get clicked or be commanded
+    if (buttonSingleClicked() || goSignal == GOING) {
+      isAnimating = true;
+      spinLength = rand(5) + 36;
+      spinInterval = 25;
+      animFrame = 0;
+      goSignal = GOING;
+    }
   }
 
   if (isAnimating) {
@@ -232,15 +267,15 @@ void spinnerLoop() {
       animFrame ++;
       animTimer.set(spinInterval);
     }
-  }
 
-  if (animFrame > spinLength) {
-    spinInterval += 2;
-  }
+    if (animFrame > spinLength) {
+      spinInterval += 2;
+    }
 
-  if (animFrame == spinLength + 24) {
-    isAnimating = false;
-    spinnerDisplay(currentVal, true);
+    if (animFrame == spinLength + 24) {
+      isAnimating = false;
+      spinnerDisplay(currentVal, true);
+    }
   }
 }
 
@@ -570,7 +605,7 @@ bool goCheck() {
   //check all neighbors for any neighbors giving go signal
   bool goBool = false;
   FOREACH_FACE(f) {
-    if (isValueReceivedOnFaceExpired(f)) {
+    if (!isValueReceivedOnFaceExpired(f)) {
       byte neighborData = getLastValueReceivedOnFace(f);
       if (getGoSignal(neighborData) == GOING) {
         goBool = true;
@@ -581,16 +616,35 @@ bool goCheck() {
 }
 
 bool resolveCheck() {
-  bool resolveBool;
+  bool resolveBool = true;
   //if all of my neighbors are going, resolving, or exempt, we can resolve
   //easy to determine, because the only remaining state is INERT
   FOREACH_FACE(f) {
-
+    if (!isValueReceivedOnFaceExpired(f)) {
+      byte neighborData = getLastValueReceivedOnFace(f);
+      if (getGoSignal(neighborData) ==  INERT) { //this is the only thing that prevents this transition
+        resolveBool = false;
+      }
+    }
   }
+
+  return resolveBool;
 }
 
 bool inertCheck() {
+  bool inertBool = true;
+  //if all of my neighbors are resolving, inert, or exempt, we can go inert
+  //easy to determine, because the only remaining state is GOING
+  FOREACH_FACE(f) {
+    if (!isValueReceivedOnFaceExpired(f)) {
+      byte neighborData = getLastValueReceivedOnFace(f);
+      if (getGoSignal(neighborData) ==  GOING) { //this is the only thing that prevents this transition
+        inertBool = false;
+      }
+    }
+  }
 
+  return inertBool;
 }
 
 /////////////////////////
