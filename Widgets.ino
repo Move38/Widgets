@@ -318,13 +318,14 @@ void timerLoop() {
       //otherwise we simply count down the remaining ticks
       if (tickTimer.isExpired()) {
         timerCountdownDisplay(true);
-        ticksRemaining--;
+
         tickFace = nextClockwise(tickFace);
         tickTimer.set(1000);
         tickOffsetTimer.set(500);
       }
       if (tickOffsetTimer.isExpired()) {
         timerCountdownDisplay(false);
+        ticksRemaining--;
         tickOffsetTimer.set(1000);
       }
       if (ticksRemaining == 0) {
@@ -378,14 +379,14 @@ void timerDisplay() {//only handles SETTING and COMPLETE display, the actual cou
 
 void timerCountdownDisplay(bool tickOn) {
   //first, set background color
-  int dimness = 255 - ((ticksRemaining % 60) * 4);
-  if (ticksRemaining > 239) { //still in the fifth minute
+  int dimness = 255 - (((ticksRemaining - 1) % 60) * 4);
+  if (ticksRemaining > 240) { //still in the fifth minute
     setColor(dim(BLUE, dimness));
-  } else if (ticksRemaining > 179) { //in the fourth minute
+  } else if (ticksRemaining > 180) { //in the fourth minute
     setColor(dim(GREEN, dimness));
-  } else if (ticksRemaining > 119) { //in the third book
+  } else if (ticksRemaining > 120) { //in the third book
     setColor(dim(YELLOW, dimness));
-  } else if (ticksRemaining > 59) { //in the second minute
+  } else if (ticksRemaining > 60) { //in the second minute
     setColor(dim(ORANGE, dimness));
   } else {//in the last minute
     setColor(dim(RED, dimness));
@@ -393,7 +394,7 @@ void timerCountdownDisplay(bool tickOn) {
 
   //now, if it's the appropriate time, turn on the tick face
   if (tickOn) {
-    setColorOnFace(dim(WHITE, dimness), tickFace);
+    setColorOnFace(WHITE, tickFace);
   }
 }
 
