@@ -1,7 +1,7 @@
 ////GENERIC VARIABLES
 bool inChooser = true;
 enum widgetModes {COIN, D6, SPINNER, TIMER, RPS};
-byte currentWidget = COIN;
+byte currentWidget = TIMER;
 byte currentVal = 1;
 enum goSignals {INERT, GOING, RESOLVING, EXEMPT};
 byte goSignal = EXEMPT;
@@ -20,6 +20,13 @@ byte rpsSignal = 0;
 
 Color headsColor;
 Color tailsColor;
+
+int ticksRemaining;
+Timer tickTimer;
+Timer tickOffsetTimer;
+byte tickFace;
+enum timerStates {SETTING, TIMING, COMPLETE};
+byte timerState = SETTING;
 
 void setup() {
 }
@@ -49,8 +56,10 @@ void loop() {
           spinnerDisplay(7, false);
           break;
         case TIMER:
+          currentVal = 1;
           break;
         case RPS:
+          currentVal = 1;
           rpsDisplay(currentVal);
           break;
       }
@@ -92,6 +101,10 @@ void loop() {
   //set up communication
   byte sendData = (inChooser << 5) + (goSignal << 3) + (inHiding << 2) + (rpsSignal);
   setValueSentOnAllFaces(sendData);
+
+  //dump click data
+  buttonSingleClicked();
+  buttonDoubleClicked();
 }
 
 void osLoop() {
@@ -133,7 +146,7 @@ void osLoop() {
         animTimer.set(100);
         break;
       case RPS:
-        currentVal++;
+        animFrame++;
         if (currentVal == 2) {
           currentVal = 0;
         }
@@ -161,6 +174,7 @@ void nextWidget() {
     case TIMER:
       currentWidget = RPS;
       currentVal = 1;
+      animFrame = 0;
       break;
     case RPS:
       currentWidget = COIN;
@@ -280,7 +294,54 @@ void spinnerLoop() {
 }
 
 void timerLoop() {
+  switch (timerState) {
+    case SETTING:
+      //in here we listen for button clicks to increment currentVal, which represents minutes on the timer
+      if (buttonSingleClicked()) {
+        currentVal++;
+        if (currentVal == 6) {
+          currentVal = 1;
+        }
+      }
 
+      //if double clicked, we move on
+      if (buttonDoubleClicked()) {
+        ticksRemaining = currentVal * 60;
+        tickFace = 1;
+        tickOffsetTimer.set(500);
+        timerState = TIMING;
+      }
+      break;
+    case TIMING:
+      //first check to make sure we haven't been cancelled via double click
+      if (buttonDoubleClicked()) {
+        timerState = SETTING;
+      }
+      //otherwise we simply count down the remaining ticks
+      if (tickTimer.isExpired()) {
+        timerCountdownDisplay(true);
+
+        tickFace = nextClockwise(tickFace);
+        tickTimer.set(1000);
+        tickOffsetTimer.set(500);
+      }
+      if (tickOffsetTimer.isExpired()) {
+        timerCountdownDisplay(false);
+        ticksRemaining--;
+        tickOffsetTimer.set(1000);
+      }
+      if (ticksRemaining == 0) {
+        timerState = COMPLETE;
+      }
+      break;
+    case COMPLETE:
+      if (buttonSingleClicked()) { //back to SETTING!
+        timerState = SETTING;
+        animFrame = 0;
+      }
+      break;
+  }
+  timerDisplay();
 }
 
 void rpsLoop() {
@@ -301,11 +362,6 @@ void rpsLoop() {
   }
 
   if (inHiding) {//check for double clicks or combat
-    if (buttonDoubleClicked()) { //toggle hiding mode
-      inHiding = false;
-      rpsDisplay(currentVal);
-    }
-
     //we need to evaluate all neighbors, see if they are in RPS hidden mode
     byte neighborsIWin = 0;
     byte neighborsILose = 0;
@@ -336,6 +392,13 @@ void rpsLoop() {
       } else if (neighborsIWin > 0) {
         rpsCombatDisplay(rpsSignal, 2);
       }
+    } else {//so I'm alone
+      rpsDisplay(4);
+    }
+
+    if (buttonDoubleClicked()) { //toggle hiding mode
+      inHiding = false;
+      rpsDisplay(currentVal);
     }
   }
 }
@@ -508,6 +571,62 @@ void timerOSDisplay(byte count) {
   setColorOnFace(WHITE, 0);
 }
 
+void timerDisplay() {//only handles SETTING and COMPLETE display, the actual countdown is handled elsewhere
+  switch (timerState) {
+    case SETTING:
+      if (animTimer.isExpired()) {
+        setColor(dim(spinnerColors[currentVal - 1], 25));
+        if (animFrame == 0) {
+          FOREACH_FACE(f) {//just turn on the faces corresponding to the timer choice
+            if (f <= currentVal) {
+              setColorOnFace(dim(spinnerColors[currentVal - 1], 100), f);
+            }
+          }
+          animFrame = 1;
+        } else if (animFrame == 1) {//nothing here, just setting animFrame
+          animFrame = 0;
+        }
+        animTimer.set(500);
+      }
+      setColorOnFace(WHITE, 0);
+      break;
+    case COMPLETE:
+      if (animTimer.isExpired()) {
+        setColor(dim(RED, 25));
+        if (animFrame == 0) {
+          setColor(RED);
+          animFrame = 1;
+        } else if (animFrame == 1) {
+          animFrame = 0;
+        }
+        animTimer.set(50);
+      }
+      setColorOnFace(WHITE, 0);
+      break;
+  }
+}
+
+void timerCountdownDisplay(bool tickOn) {
+  //first, set background color
+  int dimness = 255 - (((ticksRemaining - 1) % 60) * 4);
+  if (ticksRemaining > 240) { //still in the fifth minute
+    setColor(dim(BLUE, dimness));
+  } else if (ticksRemaining > 180) { //in the fourth minute
+    setColor(dim(GREEN, dimness));
+  } else if (ticksRemaining > 120) { //in the third book
+    setColor(dim(YELLOW, dimness));
+  } else if (ticksRemaining > 60) { //in the second minute
+    setColor(dim(ORANGE, dimness));
+  } else {//in the last minute
+    setColor(dim(RED, dimness));
+  }
+
+  //now, if it's the appropriate time, turn on the tick face
+  if (tickOn) {
+    setColorOnFace(WHITE, tickFace);
+  }
+}
+
 void rpsDisplay(byte choice) {
   setColor(OFF);
   switch (choice) {
@@ -540,16 +659,14 @@ void rpsDisplay(byte choice) {
 }
 
 void rpsCombatDisplay(byte choice, byte outcome) {
+  setColor(OFF);
   byte brightness;
   if (outcome == 0) {
     brightness = 25;
-    setColor(OFF);
   } else if (outcome == 1) {
     brightness = 150;
-    setColor(OFF);
   } else if (outcome == 2) {
     brightness = 255;
-    setColor(WHITE);
   }
 
   switch (choice) {
