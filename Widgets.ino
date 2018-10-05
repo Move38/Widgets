@@ -1,7 +1,7 @@
 ////GENERIC VARIABLES
 bool inChooser = true;
 enum widgetModes {COIN, D6, SPINNER, TIMER, RPS};
-byte currentWidget = COIN;
+byte currentWidget = TIMER;
 byte currentVal = 1;
 enum goSignals {INERT, GOING, RESOLVING, EXEMPT};
 byte goSignal = EXEMPT;
@@ -24,6 +24,7 @@ Color tailsColor;
 int ticksRemaining;
 Timer tickTimer;
 Timer tickOffsetTimer;
+byte tickFace;
 enum timerStates {SETTING, TIMING, COMPLETE};
 byte timerState = SETTING;
 
@@ -99,6 +100,10 @@ void loop() {
   //set up communication
   byte sendData = (inChooser << 5) + (goSignal << 3) + (inHiding << 2) + (rpsSignal);
   setValueSentOnAllFaces(sendData);
+
+  //dump click data
+  buttonSingleClicked();
+  buttonDoubleClicked();
 }
 
 void osLoop() {
@@ -300,11 +305,31 @@ void timerLoop() {
       //if double clicked, we move on
       if (buttonDoubleClicked()) {
         ticksRemaining = currentVal * 60;
+        tickFace = 1;
+        tickOffsetTimer.set(500);
         timerState = TIMING;
       }
       break;
     case TIMING:
-      //here we simply count down the remaining ticks
+      //first check to make sure we haven't been cancelled via double click
+      if (buttonDoubleClicked()) {
+        timerState = SETTING;
+      }
+      //otherwise we simply count down the remaining ticks
+      if (tickTimer.isExpired()) {
+        timerCountdownDisplay(true);
+        ticksRemaining--;
+        tickFace = nextClockwise(tickFace);
+        tickTimer.set(1000);
+        tickOffsetTimer.set(500);
+      }
+      if (tickOffsetTimer.isExpired()) {
+        timerCountdownDisplay(false);
+        tickOffsetTimer.set(1000);
+      }
+      if (ticksRemaining == 0) {
+        timerState = COMPLETE;
+      }
       break;
     case COMPLETE:
       if (buttonSingleClicked()) { //back to SETTING!
@@ -316,7 +341,7 @@ void timerLoop() {
   timerDisplay();
 }
 
-void timerDisplay() {
+void timerDisplay() {//only handles SETTING and COMPLETE display, the actual countdown is handled elsewhere
   switch (timerState) {
     case SETTING:
       if (animTimer.isExpired()) {
@@ -335,8 +360,6 @@ void timerDisplay() {
       }
       setColorOnFace(WHITE, 0);
       break;
-    case TIMING:
-      break;
     case COMPLETE:
       if (animTimer.isExpired()) {
         setColor(dim(RED, 25));
@@ -346,9 +369,31 @@ void timerDisplay() {
         } else if (animFrame == 1) {
           animFrame = 0;
         }
+        animTimer.set(50);
       }
       setColorOnFace(WHITE, 0);
       break;
+  }
+}
+
+void timerCountdownDisplay(bool tickOn) {
+  //first, set background color
+  int dimness = 255 - ((ticksRemaining % 60) * 4);
+  if (ticksRemaining > 239) { //still in the fifth minute
+    setColor(dim(BLUE, dimness));
+  } else if (ticksRemaining > 179) { //in the fourth minute
+    setColor(dim(GREEN, dimness));
+  } else if (ticksRemaining > 119) { //in the third book
+    setColor(dim(YELLOW, dimness));
+  } else if (ticksRemaining > 59) { //in the second minute
+    setColor(dim(ORANGE, dimness));
+  } else {//in the last minute
+    setColor(dim(RED, dimness));
+  }
+
+  //now, if it's the appropriate time, turn on the tick face
+  if (tickOn) {
+    setColorOnFace(dim(WHITE, dimness), tickFace);
   }
 }
 
