@@ -21,6 +21,12 @@ byte rpsSignal = 0;
 Color headsColor;
 Color tailsColor;
 
+int ticksRemaining;
+Timer tickTimer;
+Timer tickOffsetTimer;
+enum timerStates {SETTING, TIMING, COMPLETE};
+byte timerState = SETTING;
+
 void setup() {
 }
 
@@ -49,6 +55,7 @@ void loop() {
           spinnerDisplay(7, false);
           break;
         case TIMER:
+          currentVal = 1;
           break;
         case RPS:
           rpsDisplay(currentVal);
@@ -280,7 +287,69 @@ void spinnerLoop() {
 }
 
 void timerLoop() {
+  switch (timerState) {
+    case SETTING:
+      //in here we listen for button clicks to increment currentVal, which represents minutes on the timer
+      if (buttonSingleClicked()) {
+        currentVal++;
+        if (currentVal == 6) {
+          currentVal = 1;
+        }
+      }
 
+      //if double clicked, we move on
+      if (buttonDoubleClicked()) {
+        ticksRemaining = currentVal * 60;
+        timerState = TIMING;
+      }
+      break;
+    case TIMING:
+      //here we simply count down the remaining ticks
+      break;
+    case COMPLETE:
+      if (buttonSingleClicked()) { //back to SETTING!
+        timerState = SETTING;
+        animFrame = 0;
+      }
+      break;
+  }
+  timerDisplay();
+}
+
+void timerDisplay() {
+  switch (timerState) {
+    case SETTING:
+      if (animTimer.isExpired()) {
+        setColor(dim(spinnerColors[currentVal - 1], 25));
+        if (animFrame == 0) {
+          FOREACH_FACE(f) {//just turn on the faces corresponding to the timer choice
+            if (f <= currentVal) {
+              setColorOnFace(dim(spinnerColors[currentVal - 1], 100), f);
+            }
+          }
+          animFrame = 1;
+        } else if (animFrame == 1) {//nothing here, just setting animFrame
+          animFrame = 0;
+        }
+        animTimer.set(500);
+      }
+      setColorOnFace(WHITE, 0);
+      break;
+    case TIMING:
+      break;
+    case COMPLETE:
+      if (animTimer.isExpired()) {
+        setColor(dim(RED, 25));
+        if (animFrame == 0) {
+          setColor(RED);
+          animFrame = 1;
+        } else if (animFrame == 1) {
+          animFrame = 0;
+        }
+      }
+      setColorOnFace(WHITE, 0);
+      break;
+  }
 }
 
 void rpsLoop() {
