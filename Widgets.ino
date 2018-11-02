@@ -43,8 +43,8 @@ void loop() {
       switch (currentWidget) {
         case COIN:
           goSignal = INERT;
-          headsColor = spinnerColors[rand(2)];
-          tailsColor = spinnerColors[rand(2) + 3];
+          headsColor = spinnerColors[random(2)];
+          tailsColor = spinnerColors[random(2) + 3];
           coinDisplay(inChooser, 3);
           break;
         case D6:
@@ -214,20 +214,22 @@ void coinLoop() {
     //there are two ways to start flipping: get clicked or be commanded
     if (buttonSingleClicked() || goSignal == GOING) {//were we clicked?
       isAnimating = true;
-      animFrame = 20 + rand(1);
+      animFrame = 32 + (random(1) * 4);
       goSignal = GOING;
     }
   }
 
   if (isAnimating) {
     if (animTimer.isExpired()) {
-      coinDisplay(inChooser, currentVal);
-      if (currentVal == 1) {
-        currentVal = 2;
-      } else {
-        currentVal = 1;
+      coinDisplay(inChooser, currentVal);//display the animation at frame X
+      if (animFrame % 4 == 2) {//this is the inversion point of value
+        if (currentVal == 1) {
+          currentVal = 2;
+        } else if (currentVal == 2) {
+          currentVal = 1;
+        }
       }
-      animFrame --;//check for the end of the animation
+      animFrame --;
       animTimer.set(75);
     }//end of timer loop
 
@@ -250,7 +252,7 @@ void d6Loop() {
 
   if (isAnimating) {
     if (animTimer.isExpired()) {
-      currentVal = rand(5) + 1;
+      currentVal = random(5) + 1;
       d6Display(currentVal, false);
       animFrame ++;
       animTimer.set(75);
@@ -267,7 +269,7 @@ void spinnerLoop() {
     //there are two ways to start spinning: get clicked or be commanded
     if (buttonSingleClicked() || goSignal == GOING) {
       isAnimating = true;
-      spinLength = rand(5) + 36;
+      spinLength = random(5) + 36;
       spinInterval = 25;
       animFrame = 0;
       goSignal = GOING;
@@ -383,6 +385,15 @@ void rpsLoop() {
       }
     }
 
+    if (animTimer.isExpired()) {
+      if (animFrame == 0) {
+        animFrame = 1;
+      } else {
+        animFrame = 0;
+      }
+      animTimer.set(500);
+    }
+
     //decide how to display win/loss/tie state
     if (neighborsIWin + neighborsILose + neighborsITie > 0) {//first, do I have neighbors at all?
       if (neighborsILose > 0) {
@@ -424,31 +435,38 @@ void coinDisplay(bool osMode, byte val) {
         break;
     }
   } else {//not in OS mode
-    switch (val) {
-      case 1:
-        setColorOnFace(headsColor, 0);
-        setColorOnFace(headsColor, 1);
-        setColorOnFace(headsColor, 2);
-        setColorOnFace(dim(tailsColor, 25), 3);
-        setColorOnFace(dim(tailsColor, 25), 4);
-        setColorOnFace(dim(tailsColor, 25), 5);
-        break;
-      case 2:
-        setColorOnFace(dim(headsColor, 25), 0);
-        setColorOnFace(dim(headsColor, 25), 1);
-        setColorOnFace(dim(headsColor, 25), 2);
-        setColorOnFace(tailsColor, 3);
-        setColorOnFace(tailsColor, 4);
-        setColorOnFace(tailsColor, 5);
-        break;
-      case 3:
-        setColorOnFace(headsColor, 0);
-        setColorOnFace(headsColor, 1);
-        setColorOnFace(headsColor, 2);
-        setColorOnFace(tailsColor, 3);
-        setColorOnFace(tailsColor, 4);
-        setColorOnFace(tailsColor, 5);
-        break;
+    if (val == 3) { //this is the two face display when you exit chooser
+      setColorOnFace(headsColor, 0);
+      setColorOnFace(headsColor, 1);
+      setColorOnFace(headsColor, 2);
+      setColorOnFace(tailsColor, 3);
+      setColorOnFace(tailsColor, 4);
+      setColorOnFace(tailsColor, 5);
+    } else {//actual animation
+      Color currentColor;
+      if (val == 1) {
+        currentColor = headsColor;
+      } else {
+        currentColor = tailsColor;
+      }
+      switch (animFrame % 4) {
+        case 0:
+          setColor(currentColor);
+          break;
+        case 1:
+          setColor(currentColor);
+          setColorOnFace(OFF, 1);
+          setColorOnFace(OFF, 4);
+          break;
+        case 2:
+          setColor(OFF);
+          break;
+        case 3:
+          setColor(currentColor);
+          setColorOnFace(OFF, 1);
+          setColorOnFace(OFF, 4);
+          break;
+      }
     }
   }
 }
@@ -464,7 +482,7 @@ void d6Display(byte num, bool osMode) {
       if (osMode) {
         displayArr[0] = true;
       } else {
-        displayArr[rand(5)] = true;
+        displayArr[random(5)] = true;
       }
       displayColor = RED;
       break;
@@ -472,7 +490,7 @@ void d6Display(byte num, bool osMode) {
       if (osMode) {
         rotationRandomizer = 0;
       } else {
-        rotationRandomizer = rand(2);
+        rotationRandomizer = random(2);
       }
       displayArr[rotationRandomizer] = true;
       displayArr[rotationRandomizer + 3] = true;
@@ -482,7 +500,7 @@ void d6Display(byte num, bool osMode) {
       if (osMode) {
         rotationRandomizer = 0;
       } else {
-        rotationRandomizer = rand(1);
+        rotationRandomizer = random(1);
       }
       displayArr[rotationRandomizer] = true;
       displayArr[rotationRandomizer + 2] = true;
@@ -493,7 +511,7 @@ void d6Display(byte num, bool osMode) {
       if (osMode) {
         rotationRandomizer = 0;
       } else {
-        rotationRandomizer = rand(2);
+        rotationRandomizer = random(2);
       }
       displayArr[0] = true;
       displayArr[1] = true;
@@ -515,7 +533,7 @@ void d6Display(byte num, bool osMode) {
       if (osMode) {
         displayArr[3] = false;
       } else {
-        displayArr[rand(5)] = false;
+        displayArr[random(5)] = false;
       }
       displayColor = BLUE;
       break;
@@ -660,33 +678,50 @@ void rpsDisplay(byte choice) {
 
 void rpsCombatDisplay(byte choice, byte outcome) {
   setColor(OFF);
-  byte brightness;
-  if (outcome == 0) {
-    brightness = 25;
-  } else if (outcome == 1) {
-    brightness = 150;
-  } else if (outcome == 2) {
-    brightness = 255;
+  bool layout[6];
+  bool rockLayout[6] = {true, true, true, true, false, false};
+  bool paperLayout[6] = {false, true, true, false, true, true};
+  bool scissorLayout[6] = {true, false, true, false, true, false};
+  Color currentColor;
+  //determine layout and default color
+  switch (choice) {
+    case 1:
+      FOREACH_FACE(f) {
+        layout[f] = rockLayout[f];
+      }
+      currentColor = BLUE;
+      break;
+    case 2:
+      FOREACH_FACE(f) {
+        layout[f] = paperLayout[f];
+      }
+      currentColor = YELLOW;
+      break;
+    case 3:
+      FOREACH_FACE(f) {
+        layout[f] = scissorLayout[f];
+      }
+      currentColor = RED;
+      break;
   }
 
-  switch (choice) {
-    case ROCK:
-      setColorOnFace(dim(BLUE, brightness), 0);
-      setColorOnFace(dim(BLUE, brightness), 1);
-      setColorOnFace(dim(BLUE, brightness), 2);
-      setColorOnFace(dim(BLUE, brightness), 3);
-      break;
-    case PAPER:
-      setColorOnFace(dim(YELLOW, brightness), 1);
-      setColorOnFace(dim(YELLOW, brightness), 2);
-      setColorOnFace(dim(YELLOW, brightness), 4);
-      setColorOnFace(dim(YELLOW, brightness), 5);
-      break;
-    case SCISSOR:
-      setColorOnFace(dim(RED, brightness), 0);
-      setColorOnFace(dim(RED, brightness), 2);
-      setColorOnFace(dim(RED, brightness), 4);
-      break;
+  //determine flash color change
+  if (animFrame = 0) {
+    switch (outcome) {
+      case 0://losers flash off
+        currentColor = OFF;
+        break;
+      case 2://winners flash on
+        currentColor = WHITE;
+        break;
+    }
+  }
+
+  //apply the color
+  FOREACH_FACE(f) {
+    if (layout[f]) {
+      setColorOnFace(currentColor, f);
+    }
   }
 }
 
