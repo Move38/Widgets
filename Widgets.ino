@@ -1,7 +1,7 @@
 ////GENERIC VARIABLES
 bool inChooser = true;
 enum widgetModes {COIN, D6, SPINNER, TIMER, RPS};
-byte currentWidget = TIMER;
+byte currentWidget = SPINNER;
 byte currentVal = 1;
 enum goSignals {INERT, GOING, RESOLVING, EXEMPT};
 byte goSignal = EXEMPT;
@@ -43,8 +43,8 @@ void loop() {
       switch (currentWidget) {
         case COIN:
           goSignal = INERT;
-          headsColor = spinnerColors[random(2)];
-          tailsColor = spinnerColors[random(2) + 3];
+          headsColor = spinnerColors[rand(2)];
+          tailsColor = spinnerColors[rand(2) + 3];
           coinDisplay(inChooser, 3);
           break;
         case D6:
@@ -214,7 +214,7 @@ void coinLoop() {
     //there are two ways to start flipping: get clicked or be commanded
     if (buttonSingleClicked() || goSignal == GOING) {//were we clicked?
       isAnimating = true;
-      animFrame = 32 + (random(1) * 8);
+      animFrame = 32 + (rand(1) * 8);
       goSignal = GOING;
     }
   }
@@ -252,7 +252,7 @@ void d6Loop() {
 
   if (isAnimating) {
     if (animTimer.isExpired()) {
-      currentVal = random(5) + 1;
+      currentVal = rand(5) + 1;
       d6Display(currentVal, false);
       animFrame ++;
       animTimer.set(75);
@@ -269,7 +269,7 @@ void spinnerLoop() {
     //there are two ways to start spinning: get clicked or be commanded
     if (buttonSingleClicked() || goSignal == GOING) {
       isAnimating = true;
-      spinLength = random(5) + 24;
+      spinLength = rand(5) + 36;
       spinInterval = 25;
       animFrame = 0;
       goSignal = GOING;
@@ -284,7 +284,7 @@ void spinnerLoop() {
       animTimer.set(spinInterval);
 
       if (animFrame > 24) {
-        spinInterval += 2;
+        spinInterval += 5;
       }
     }
 
@@ -482,7 +482,7 @@ void d6Display(byte num, bool osMode) {
       if (osMode) {
         displayArr[0] = true;
       } else {
-        displayArr[random(5)] = true;
+        displayArr[rand(5)] = true;
       }
       displayColor = RED;
       break;
@@ -490,7 +490,7 @@ void d6Display(byte num, bool osMode) {
       if (osMode) {
         rotationRandomizer = 0;
       } else {
-        rotationRandomizer = random(2);
+        rotationRandomizer = rand(2);
       }
       displayArr[rotationRandomizer] = true;
       displayArr[rotationRandomizer + 3] = true;
@@ -500,7 +500,7 @@ void d6Display(byte num, bool osMode) {
       if (osMode) {
         rotationRandomizer = 0;
       } else {
-        rotationRandomizer = random(1);
+        rotationRandomizer = rand(1);
       }
       displayArr[rotationRandomizer] = true;
       displayArr[rotationRandomizer + 2] = true;
@@ -511,7 +511,7 @@ void d6Display(byte num, bool osMode) {
       if (osMode) {
         rotationRandomizer = 0;
       } else {
-        rotationRandomizer = random(2);
+        rotationRandomizer = rand(2);
       }
       displayArr[0] = true;
       displayArr[1] = true;
@@ -533,7 +533,7 @@ void d6Display(byte num, bool osMode) {
       if (osMode) {
         displayArr[3] = false;
       } else {
-        displayArr[random(5)] = false;
+        displayArr[rand(5)] = false;
       }
       displayColor = BLUE;
       break;
