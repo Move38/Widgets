@@ -1,7 +1,7 @@
 ////GENERIC VARIABLES
 bool inChooser = true;
 enum widgetModes {COIN, D6, SPINNER, TIMER, RPS};
-byte currentWidget = SPINNER;
+byte currentWidget = TIMER;
 byte currentVal = 1;
 enum goSignals {INERT, GOING, RESOLVING, EXEMPT};
 byte goSignal = EXEMPT;
@@ -246,6 +246,7 @@ void d6Loop() {
     if (buttonSingleClicked() || goSignal == GOING) {//were we clicked?
       isAnimating = true;
       animFrame = 0;
+      spinInterval = 50;
       goSignal = GOING;
     }
   }
@@ -255,11 +256,13 @@ void d6Loop() {
       currentVal = rand(5) + 1;
       d6Display(currentVal, false);
       animFrame ++;
-      animTimer.set(75);
+      spinInterval += 10;
+      animTimer.set(spinInterval);
     }
 
-    if (animFrame == 15) {
+    if (animFrame == 20) {
       isAnimating = false;
+      d6Display(currentVal, false);
     }
   }
 }
@@ -269,9 +272,8 @@ void spinnerLoop() {
     //there are two ways to start spinning: get clicked or be commanded
     if (buttonSingleClicked() || goSignal == GOING) {
       isAnimating = true;
-      spinLength = rand(5) + 36;
+      spinLength = rand(5) + 42;
       spinInterval = 25;
-      animFrame = 0;
       goSignal = GOING;
     }
   }
@@ -280,15 +282,15 @@ void spinnerLoop() {
     if (animTimer.isExpired()) {
       currentVal = nextClockwise(currentVal);
       spinnerDisplay(currentVal, false);
-      animFrame ++;
+      spinLength--;
       animTimer.set(spinInterval);
 
-      if (animFrame > 24) {
-        spinInterval += 5;
+      if (spinLength < 24) {
+        spinInterval = (spinInterval * 23) / 20;
       }
     }
 
-    if (animFrame == spinLength + 24) {
+    if (spinLength == 0) {
       isAnimating = false;
       spinnerDisplay(currentVal, true);
     }
@@ -301,6 +303,8 @@ void timerLoop() {
       //in here we listen for button clicks to increment currentVal, which represents minutes on the timer
       if (buttonSingleClicked()) {
         currentVal++;
+        animFrame = 0;
+        animTimer.set(0);
         if (currentVal == 6) {
           currentVal = 1;
         }
@@ -391,7 +395,7 @@ void rpsLoop() {
       } else {
         animFrame = 0;
       }
-      animTimer.set(500);
+      animTimer.set(250);
     }
 
     //decide how to display win/loss/tie state
@@ -474,6 +478,7 @@ void coinDisplay(bool osMode, byte val) {
 void d6Display(byte num, bool osMode) {
   setColor(OFF);
   Color displayColor;
+  byte displayBrightness = 255;
   byte rotationRandomizer = 0;
   bool displayArr[6] = {false, false, false, false, false, false};
 
@@ -553,9 +558,14 @@ void d6Display(byte num, bool osMode) {
     setColor(dim(WHITE, 128));
   }
 
+  //set brightness
+  if (isAnimating) {
+    displayBrightness = 128;
+  }
+
   FOREACH_FACE(f) {
     if (displayArr[f] == true) {
-      setColorOnFace(displayColor, f);
+      setColorOnFace(dim(displayColor, displayBrightness), f);
     }
   }
 }
@@ -597,20 +607,28 @@ void timerDisplay() {//only handles SETTING and COMPLETE display, the actual cou
   switch (timerState) {
     case SETTING:
       if (animTimer.isExpired()) {
-        setColor(dim(spinnerColors[currentVal - 1], 25));
-        if (animFrame == 0) {
-          FOREACH_FACE(f) {//just turn on the faces corresponding to the timer choice
-            if (f <= currentVal) {
-              setColorOnFace(dim(spinnerColors[currentVal - 1], 128), f);
+        //so we need to tick on the lights every second
+        setColor(OFF);
+        if (animFrame < currentVal) {//we are not ready to reset
+          FOREACH_FACE(f) {
+            if (f <= animFrame) {
+              setColorOnFace(spinnerColors[currentVal - 1], f + 1);
             }
           }
-          animFrame = 1;
-        } else if (animFrame == 1) {//nothing here, just setting animFrame
-          animFrame = 0;
         }
-        animTimer.set(500);
+
+        animFrame++;
+
+        if (animFrame > currentVal) {
+          animTimer.set(500);
+          animFrame = 0;
+        } else if (animFrame == currentVal) {
+          animTimer.set(500);
+        } else {
+          animTimer.set(100);
+        }
+        setColorOnFace(WHITE, 0);
       }
-      setColorOnFace(WHITE, 0);
       break;
     case COMPLETE:
       if (animTimer.isExpired()) {
@@ -630,7 +648,7 @@ void timerDisplay() {//only handles SETTING and COMPLETE display, the actual cou
 
 void timerCountdownDisplay(bool tickOn) {
   //first, set background color
-  int dimness = 255 - (((ticksRemaining - 1) % 60) * 2);
+  int dimness = 255 - (((60 - (ticksRemaining - 1) % 60)) * 3);
   if (ticksRemaining > 240) { //still in the fifth minute
     setColor(dim(BLUE, dimness));
   } else if (ticksRemaining > 180) { //in the fourth minute
