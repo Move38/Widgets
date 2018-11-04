@@ -16,7 +16,10 @@ byte spinLength;
 
 bool inHiding = false;
 enum rpsChoices {NADA, ROCK, PAPER, SCISSOR, HIDING};
+enum rpsOutcomes {LOSE, TIE, WIN};
 byte rpsSignal = 0;
+uint32_t timeOfBattleStart = 0;
+bool isInBattle = false;
 
 Color headsColor;
 Color tailsColor;
@@ -60,7 +63,7 @@ void loop() {
           break;
         case RPS:
           currentVal = 1;
-          rpsDisplay(currentVal);
+          rpsDisplay(currentVal, 255);
           break;
       }
     } else {
@@ -357,13 +360,13 @@ void rpsLoop() {
       if (currentVal == 4) {
         currentVal = 1;
       }
-      rpsDisplay(currentVal);
+      rpsDisplay(currentVal, 255);
       rpsSignal = currentVal;
     }
 
     if (buttonDoubleClicked()) { //toggle hiding mode
       inHiding = true;
-      rpsDisplay(4);
+      rpsDisplay(HIDING, 255);
     }
   }
 
@@ -377,10 +380,12 @@ void rpsLoop() {
       if (!isValueReceivedOnFaceExpired(f)) { //there is a neighbor here
         byte neighborData = getLastValueReceivedOnFace(f);
         if (getRPSHiddenSignal(neighborData) == 1) { //this neighbor is in hiding, ready to play
-          int victoryCheck = rpsSignal - getRPSSignal(neighborData);
-          if (victoryCheck == 1 || victoryCheck == -2) {
+
+          byte gameResult = getRPSResult(rpsSignal, getRPSSignal(neighborData));
+
+          if (gameResult == WIN) {
             neighborsIWin ++;
-          } else if (victoryCheck == 2 || victoryCheck == -1) {
+          } else if (gameResult == LOSE) {
             neighborsILose ++;
           } else {
             neighborsITie ++;
@@ -391,21 +396,49 @@ void rpsLoop() {
 
     //decide how to display win/loss/tie state
     if (neighborsIWin + neighborsILose + neighborsITie > 0) {//first, do I have neighbors at all?
+
+      // the moment we enter battle
+      if (!isInBattle) {
+        timeOfBattleStart = millis();
+        isInBattle = true;
+      }
+
       if (neighborsILose > 0) {
-        rpsCombatDisplay(rpsSignal, 0);
+        rpsCombatDisplay(rpsSignal, LOSE);
       } else if (neighborsITie > 0) {
-        rpsCombatDisplay(rpsSignal, 1);
+        rpsCombatDisplay(rpsSignal, TIE);
       } else if (neighborsIWin > 0) {
-        rpsCombatDisplay(rpsSignal, 2);
+        rpsCombatDisplay(rpsSignal, WIN);
       }
     } else {//so I'm alone
-      rpsDisplay(4);
+      rpsDisplay(HIDING, 255);
+      isInBattle = false;
     }
 
     if (buttonDoubleClicked()) { //toggle hiding mode
       inHiding = false;
-      rpsDisplay(currentVal);
+      rpsDisplay(currentVal, 255);
     }
+  }
+}
+
+byte getRPSResult(byte myChoice, byte neighborChoice) {
+
+  if (myChoice == neighborChoice) {
+    return TIE;
+  }
+
+  if (myChoice == ROCK && neighborChoice == SCISSOR ) {
+    return WIN;
+  }
+  else if (myChoice == SCISSOR && neighborChoice == ROCK) {
+    return LOSE;
+  }
+  else if ( myChoice > neighborChoice ) {
+    return WIN;
+  }
+  else {
+    return LOSE;
   }
 }
 
@@ -658,87 +691,82 @@ void timerCountdownDisplay(bool tickOn) {
   }
 }
 
-void rpsDisplay(byte choice) {
+void rpsDisplay(byte choice, byte brightness) {
+
   setColor(OFF);
+
   switch (choice) {
+
     case ROCK:
-      setColorOnFace(BLUE, 0);
-      setColorOnFace(BLUE, 1);
-      setColorOnFace(BLUE, 2);
-      setColorOnFace(BLUE, 3);
+      setColorOnFace(dim(BLUE, brightness), 0);
+      setColorOnFace(dim(BLUE, brightness), 1);
+      setColorOnFace(dim(BLUE, brightness), 2);
+      setColorOnFace(dim(BLUE, brightness), 3);
       break;
+
     case PAPER:
-      setColorOnFace(YELLOW, 1);
-      setColorOnFace(YELLOW, 2);
-      setColorOnFace(YELLOW, 4);
-      setColorOnFace(YELLOW, 5);
+      setColorOnFace(dim(YELLOW, brightness), 1);
+      setColorOnFace(dim(YELLOW, brightness), 2);
+      setColorOnFace(dim(YELLOW, brightness), 4);
+      setColorOnFace(dim(YELLOW, brightness), 5);
       break;
+
     case SCISSOR:
-      setColorOnFace(RED, 0);
-      setColorOnFace(RED, 2);
-      setColorOnFace(RED, 4);
+      setColorOnFace(dim(RED, brightness), 0);
+      setColorOnFace(dim(RED, brightness), 2);
+      setColorOnFace(dim(RED, brightness), 4);
       break;
+
     case HIDING:
       // show rock/paper/scissor for 250ms
 
       if ((millis() / 300) % 6 == 0) {
-        rpsDisplay(ROCK);
+        rpsDisplay(ROCK, 192);
       }
       else if ((millis() / 300) % 6 == 2) {
-        rpsDisplay(PAPER);
+        rpsDisplay(PAPER, 192);
       }
       else if ((millis() / 300) % 6 == 4) {
-        rpsDisplay(SCISSOR);
+        rpsDisplay(SCISSOR, 192);
       }
       else {
         setColor(OFF);  // Blink these babies
       }
 
-      //      setColorOnFace(dim(RED, 128), 0);
-      //      setColorOnFace(dim(YELLOW, 128), 1);
-      //      setColorOnFace(dim(BLUE, 128), 2);
-      //      setColorOnFace(dim(RED, 128), 3);
-      //      setColorOnFace(dim(YELLOW, 128), 4);
-      //      setColorOnFace(dim(BLUE, 128), 5);
       break;
   }
 }
 
 void rpsCombatDisplay(byte choice, byte outcome) {
-  setColor(OFF);
-  byte layout[6];
-  byte rockLayout[6] = {1, 1, 1, 1, 0, 0};
-  byte paperLayout[6] = {0, 1, 1, 0, 1, 1};
-  byte scissorLayout[6] = {1, 0, 1, 0, 1, 0};
-  Color currentColor;
-  //determine layout and default color
-  switch (choice) {
-    case ROCK:
-      FOREACH_FACE(f) {
-        layout[f] = rockLayout[f];
-      }
-      currentColor = BLUE;
-      break;
-    case PAPER:
-      FOREACH_FACE(f) {
-        layout[f] = paperLayout[f];
-      }
-      currentColor = YELLOW;
-      break;
-    case SCISSOR:
-      FOREACH_FACE(f) {
-        layout[f] = scissorLayout[f];
-      }
-      currentColor = RED;
-      break;
-  }
+  //
+  uint32_t timeSinceBattleStarted = millis() - timeOfBattleStart;
 
-  //apply the color
-  FOREACH_FACE(f) {
-    if (layout[f]) {
-      setColorOnFace(currentColor, f);
+  if (timeSinceBattleStarted < 1500) {
+    // rock, paper, scissors
+    byte c = (1 + timeSinceBattleStarted / 500);
+    byte bri = 255 - (timeSinceBattleStarted % 500) / 2;
+    rpsDisplay( c, bri);
+  }
+  else {
+    // shoot
+    // handle the outcome
+    if (outcome == WIN) {
+      // Solid victory
+      rpsDisplay( choice, 255);
+    }
+    else if (outcome == LOSE) {
+      // fade out from our choice to nothing... forever
+      byte bri = 0;
+      if (timeSinceBattleStarted - 1500 < 500) {
+        bri = 255 - ((timeSinceBattleStarted - 1500) / 2);
+      }
+      rpsDisplay( choice, bri);
+    }
+    else if (outcome == TIE) {
+      rpsDisplay( choice, 255);
     }
   }
+
 }
 
 void rpsOSDisplay(byte frame) {
