@@ -150,11 +150,11 @@ void osLoop() {
         break;
       case RPS:
         animFrame++;
-        if (animFrame > 1) {
+        if (animFrame > 44) {
           animFrame = 0;
         }
         rpsOSDisplay(animFrame);
-        animTimer.set(600);
+        animTimer.set(33);
         break;
     }
   }
@@ -770,11 +770,28 @@ void rpsCombatDisplay(byte choice, byte outcome) {
 }
 
 void rpsOSDisplay(byte frame) {
-  setColor(dim(WHITE, 128));
-  if (frame == 0) {
-    setColorOnFace(WHITE, 0);
-    setColorOnFace(WHITE, 2);
-    setColorOnFace(WHITE, 4);
+
+  // a ghostly rock, paper, scissors
+  byte bri = 255 - (17 * (frame % 15));
+  setColor(dim(WHITE, bri));
+
+  // mask correctly
+  byte c = 1 + (frame / 15);
+  switch (c) {
+    case ROCK:
+      setColorOnFace(OFF, 4);
+      setColorOnFace(OFF, 5);
+      break;
+    case PAPER:
+      setColorOnFace(OFF, 0);
+      setColorOnFace(OFF, 3);
+      break;
+    case SCISSOR:
+      setColorOnFace(OFF, 1);
+      setColorOnFace(OFF, 3);
+      setColorOnFace(OFF, 5);
+      break;
+    default: break;
   }
 }
 
