@@ -59,6 +59,7 @@ void loop() {
           currentVal = 1;
           break;
         case RPS:
+          currentVal = 1;
           rpsDisplay(currentVal);
           break;
       }
@@ -145,11 +146,11 @@ void osLoop() {
         animTimer.set(100);
         break;
       case RPS:
-        currentVal++;
-        if (currentVal == 2) {
-          currentVal = 0;
+        animFrame++;
+        if (animFrame > 1) {
+          animFrame = 0;
         }
-        rpsOSDisplay(currentVal);
+        rpsOSDisplay(animFrame);
         animTimer.set(600);
         break;
     }
@@ -173,6 +174,7 @@ void nextWidget() {
     case TIMER:
       currentWidget = RPS;
       currentVal = 1;
+      animFrame = 0;
       break;
     case RPS:
       currentWidget = COIN;
@@ -212,24 +214,26 @@ void coinLoop() {
     //there are two ways to start flipping: get clicked or be commanded
     if (buttonSingleClicked() || goSignal == GOING) {//were we clicked?
       isAnimating = true;
-      animFrame = 20 + rand(1);
+      animFrame = 32 + (rand(1) * 8);
       goSignal = GOING;
     }
   }
 
   if (isAnimating) {
     if (animTimer.isExpired()) {
-      coinDisplay(inChooser, currentVal);
-      if (currentVal == 1) {
-        currentVal = 2;
-      } else {
-        currentVal = 1;
+      coinDisplay(inChooser, currentVal);//display the animation at frame X
+      if (animFrame % 4 == 2) {//this is the inversion point of value
+        if (currentVal == 1) {
+          currentVal = 2;
+        } else if (currentVal == 2) {
+          currentVal = 1;
+        }
       }
-      animFrame --;//check for the end of the animation
+      animFrame --;
       animTimer.set(75);
     }//end of timer loop
 
-    if (animFrame == 0) {
+    if (animFrame == 3) {
       isAnimating = false;
     }
   }
@@ -242,6 +246,7 @@ void d6Loop() {
     if (buttonSingleClicked() || goSignal == GOING) {//were we clicked?
       isAnimating = true;
       animFrame = 0;
+      spinInterval = 50;
       goSignal = GOING;
     }
   }
@@ -251,11 +256,13 @@ void d6Loop() {
       currentVal = rand(5) + 1;
       d6Display(currentVal, false);
       animFrame ++;
-      animTimer.set(75);
+      spinInterval += 10;
+      animTimer.set(spinInterval);
     }
 
-    if (animFrame == 15) {
+    if (animFrame == 20) {
       isAnimating = false;
+      d6Display(currentVal, false);
     }
   }
 }
@@ -265,9 +272,8 @@ void spinnerLoop() {
     //there are two ways to start spinning: get clicked or be commanded
     if (buttonSingleClicked() || goSignal == GOING) {
       isAnimating = true;
-      spinLength = rand(5) + 36;
+      spinLength = rand(5) + 42;
       spinInterval = 25;
-      animFrame = 0;
       goSignal = GOING;
     }
   }
@@ -276,15 +282,15 @@ void spinnerLoop() {
     if (animTimer.isExpired()) {
       currentVal = nextClockwise(currentVal);
       spinnerDisplay(currentVal, false);
-      animFrame ++;
+      spinLength--;
       animTimer.set(spinInterval);
+
+      if (spinLength < 24) {
+        spinInterval = (spinInterval * 23) / 20;
+      }
     }
 
-    if (animFrame > spinLength) {
-      spinInterval += 2;
-    }
-
-    if (animFrame == spinLength + 24) {
+    if (spinLength == 0) {
       isAnimating = false;
       spinnerDisplay(currentVal, true);
     }
@@ -297,6 +303,8 @@ void timerLoop() {
       //in here we listen for button clicks to increment currentVal, which represents minutes on the timer
       if (buttonSingleClicked()) {
         currentVal++;
+        animFrame = 0;
+        animTimer.set(0);
         if (currentVal == 6) {
           currentVal = 1;
         }
@@ -342,62 +350,6 @@ void timerLoop() {
   timerDisplay();
 }
 
-void timerDisplay() {//only handles SETTING and COMPLETE display, the actual countdown is handled elsewhere
-  switch (timerState) {
-    case SETTING:
-      if (animTimer.isExpired()) {
-        setColor(dim(spinnerColors[currentVal - 1], 25));
-        if (animFrame == 0) {
-          FOREACH_FACE(f) {//just turn on the faces corresponding to the timer choice
-            if (f <= currentVal) {
-              setColorOnFace(dim(spinnerColors[currentVal - 1], 100), f);
-            }
-          }
-          animFrame = 1;
-        } else if (animFrame == 1) {//nothing here, just setting animFrame
-          animFrame = 0;
-        }
-        animTimer.set(500);
-      }
-      setColorOnFace(WHITE, 0);
-      break;
-    case COMPLETE:
-      if (animTimer.isExpired()) {
-        setColor(dim(RED, 25));
-        if (animFrame == 0) {
-          setColor(RED);
-          animFrame = 1;
-        } else if (animFrame == 1) {
-          animFrame = 0;
-        }
-        animTimer.set(50);
-      }
-      setColorOnFace(WHITE, 0);
-      break;
-  }
-}
-
-void timerCountdownDisplay(bool tickOn) {
-  //first, set background color
-  int dimness = 255 - (((ticksRemaining - 1) % 60) * 4);
-  if (ticksRemaining > 240) { //still in the fifth minute
-    setColor(dim(BLUE, dimness));
-  } else if (ticksRemaining > 180) { //in the fourth minute
-    setColor(dim(GREEN, dimness));
-  } else if (ticksRemaining > 120) { //in the third book
-    setColor(dim(YELLOW, dimness));
-  } else if (ticksRemaining > 60) { //in the second minute
-    setColor(dim(ORANGE, dimness));
-  } else {//in the last minute
-    setColor(dim(RED, dimness));
-  }
-
-  //now, if it's the appropriate time, turn on the tick face
-  if (tickOn) {
-    setColorOnFace(WHITE, tickFace);
-  }
-}
-
 void rpsLoop() {
   if (!inHiding) {
     if (buttonSingleClicked()) {
@@ -416,11 +368,6 @@ void rpsLoop() {
   }
 
   if (inHiding) {//check for double clicks or combat
-    if (buttonDoubleClicked()) { //toggle hiding mode
-      inHiding = false;
-      rpsDisplay(currentVal);
-    }
-
     //we need to evaluate all neighbors, see if they are in RPS hidden mode
     byte neighborsIWin = 0;
     byte neighborsILose = 0;
@@ -442,6 +389,15 @@ void rpsLoop() {
       }
     }
 
+    if (animTimer.isExpired()) {
+      if (animFrame == 0) {
+        animFrame = 1;
+      } else {
+        animFrame = 0;
+      }
+      animTimer.set(250);
+    }
+
     //decide how to display win/loss/tie state
     if (neighborsIWin + neighborsILose + neighborsITie > 0) {//first, do I have neighbors at all?
       if (neighborsILose > 0) {
@@ -451,6 +407,13 @@ void rpsLoop() {
       } else if (neighborsIWin > 0) {
         rpsCombatDisplay(rpsSignal, 2);
       }
+    } else {//so I'm alone
+      rpsDisplay(4);
+    }
+
+    if (buttonDoubleClicked()) { //toggle hiding mode
+      inHiding = false;
+      rpsDisplay(currentVal);
     }
   }
 }
@@ -463,44 +426,51 @@ void coinDisplay(bool osMode, byte val) {
   if (osMode) {//OS display
     switch (val) {
       case 1:
-        setColor(dim(WHITE, 25));
+        setColor(dim(WHITE, 128));
         setColorOnFace(WHITE, 0);
         setColorOnFace(WHITE, 1);
         setColorOnFace(WHITE, 2);
         break;
       case 2:
-        setColor(dim(WHITE, 100));
+        setColor(dim(WHITE, 128));
         setColorOnFace(WHITE, 3);
         setColorOnFace(WHITE, 4);
         setColorOnFace(WHITE, 5);
         break;
     }
   } else {//not in OS mode
-    switch (val) {
-      case 1:
-        setColorOnFace(headsColor, 0);
-        setColorOnFace(headsColor, 1);
-        setColorOnFace(headsColor, 2);
-        setColorOnFace(dim(tailsColor, 25), 3);
-        setColorOnFace(dim(tailsColor, 25), 4);
-        setColorOnFace(dim(tailsColor, 25), 5);
-        break;
-      case 2:
-        setColorOnFace(dim(headsColor, 25), 0);
-        setColorOnFace(dim(headsColor, 25), 1);
-        setColorOnFace(dim(headsColor, 25), 2);
-        setColorOnFace(tailsColor, 3);
-        setColorOnFace(tailsColor, 4);
-        setColorOnFace(tailsColor, 5);
-        break;
-      case 3:
-        setColorOnFace(headsColor, 0);
-        setColorOnFace(headsColor, 1);
-        setColorOnFace(headsColor, 2);
-        setColorOnFace(tailsColor, 3);
-        setColorOnFace(tailsColor, 4);
-        setColorOnFace(tailsColor, 5);
-        break;
+    if (val == 3) { //this is the two face display when you exit chooser
+      setColorOnFace(headsColor, 0);
+      setColorOnFace(headsColor, 1);
+      setColorOnFace(headsColor, 2);
+      setColorOnFace(tailsColor, 3);
+      setColorOnFace(tailsColor, 4);
+      setColorOnFace(tailsColor, 5);
+    } else {//actual animation
+      Color currentColor;
+      if (val == 1) {
+        currentColor = headsColor;
+      } else {
+        currentColor = tailsColor;
+      }
+      switch (animFrame % 4) {
+        case 0:
+          setColor(currentColor);
+          break;
+        case 1:
+          setColor(currentColor);
+          setColorOnFace(OFF, 1);
+          setColorOnFace(OFF, 4);
+          break;
+        case 2:
+          setColor(OFF);
+          break;
+        case 3:
+          setColor(currentColor);
+          setColorOnFace(OFF, 1);
+          setColorOnFace(OFF, 4);
+          break;
+      }
     }
   }
 }
@@ -508,6 +478,7 @@ void coinDisplay(bool osMode, byte val) {
 void d6Display(byte num, bool osMode) {
   setColor(OFF);
   Color displayColor;
+  byte displayBrightness = 255;
   byte rotationRandomizer = 0;
   bool displayArr[6] = {false, false, false, false, false, false};
 
@@ -584,12 +555,17 @@ void d6Display(byte num, bool osMode) {
 
   if (osMode) {
     displayColor = WHITE;
-    setColor(dim(WHITE, 25));
+    setColor(dim(WHITE, 128));
+  }
+
+  //set brightness
+  if (isAnimating) {
+    displayBrightness = 128;
   }
 
   FOREACH_FACE(f) {
     if (displayArr[f] == true) {
-      setColorOnFace(displayColor, f);
+      setColorOnFace(dim(displayColor, displayBrightness), f);
     }
   }
 }
@@ -597,18 +573,22 @@ void d6Display(byte num, bool osMode) {
 void spinnerDisplay(byte face, bool isFinal) {
 
   FOREACH_FACE(f) {
-    setColorOnFace(dim(spinnerColors[f], 25), f);
+    byte brightness = 160;
+    if (isFinal) {
+      brightness = 100;
+    }
+    setColorOnFace(dim(spinnerColors[f], brightness), f);
   }
 
   if (isFinal) {
     setColorOnFace(spinnerColors[face], face);
   } else {
-    setColorOnFace(dim(WHITE, 100), face);
+    setColorOnFace(WHITE, face);
   }
 }
 
 void spinnerOSDisplay(byte face) {
-  setColor(dim(WHITE, 25));
+  setColor(dim(WHITE, 128));
   setColorOnFace(dim(WHITE, 100), 0);
   setColorOnFace(dim(WHITE, 100), 2);
   setColorOnFace(dim(WHITE, 100), 4);
@@ -616,11 +596,75 @@ void spinnerOSDisplay(byte face) {
 }
 
 void timerOSDisplay(byte count) {
-  setColor(dim(WHITE, 25));
+  setColor(dim(WHITE, 100));
   if (count < 6) {
-    setColorOnFace(dim(WHITE, 100), count);
+    setColorOnFace(WHITE, count);
   }
   setColorOnFace(WHITE, 0);
+}
+
+void timerDisplay() {//only handles SETTING and COMPLETE display, the actual countdown is handled elsewhere
+  switch (timerState) {
+    case SETTING:
+      if (animTimer.isExpired()) {
+        //so we need to tick on the lights every second
+        setColor(OFF);
+        if (animFrame < currentVal) {//we are not ready to reset
+          FOREACH_FACE(f) {
+            if (f <= animFrame) {
+              setColorOnFace(spinnerColors[currentVal - 1], f + 1);
+            }
+          }
+        }
+
+        animFrame++;
+
+        if (animFrame > currentVal) {
+          animTimer.set(500);
+          animFrame = 0;
+        } else if (animFrame == currentVal) {
+          animTimer.set(500);
+        } else {
+          animTimer.set(100);
+        }
+        setColorOnFace(WHITE, 0);
+      }
+      break;
+    case COMPLETE:
+      if (animTimer.isExpired()) {
+        setColor(dim(RED, 128));
+        if (animFrame == 0) {
+          setColor(RED);
+          animFrame = 1;
+        } else if (animFrame == 1) {
+          animFrame = 0;
+        }
+        animTimer.set(50);
+      }
+      setColorOnFace(WHITE, 0);
+      break;
+  }
+}
+
+void timerCountdownDisplay(bool tickOn) {
+  //first, set background color
+  int dimness = 255 - (((60 - (ticksRemaining - 1) % 60)) * 3);
+  if (ticksRemaining > 240) { //still in the fifth minute
+    setColor(dim(BLUE, dimness));
+  } else if (ticksRemaining > 180) { //in the fourth minute
+    setColor(dim(GREEN, dimness));
+  } else if (ticksRemaining > 120) { //in the third book
+    setColor(dim(YELLOW, dimness));
+  } else if (ticksRemaining > 60) { //in the second minute
+    setColor(dim(ORANGE, dimness));
+  } else {//in the last minute
+    setColor(dim(RED, dimness));
+  }
+
+  //now, if it's the appropriate time, turn on the tick face
+  if (tickOn) {
+    setColorOnFace(WHITE, tickFace);
+  }
 }
 
 void rpsDisplay(byte choice) {
@@ -644,56 +688,72 @@ void rpsDisplay(byte choice) {
       setColorOnFace(RED, 4);
       break;
     case 4://hiding
-      setColorOnFace(dim(RED, 25), 0);
-      setColorOnFace(dim(YELLOW, 25), 1);
-      setColorOnFace(dim(BLUE, 25), 2);
-      setColorOnFace(dim(RED, 25), 3);
-      setColorOnFace(dim(YELLOW, 25), 4);
-      setColorOnFace(dim(BLUE, 25), 5);
+      setColorOnFace(dim(RED, 128), 0);
+      setColorOnFace(dim(YELLOW, 128), 1);
+      setColorOnFace(dim(BLUE, 128), 2);
+      setColorOnFace(dim(RED, 128), 3);
+      setColorOnFace(dim(YELLOW, 128), 4);
+      setColorOnFace(dim(BLUE, 128), 5);
       break;
   }
 }
 
 void rpsCombatDisplay(byte choice, byte outcome) {
-  byte brightness;
-  if (outcome == 0) {
-    brightness = 25;
-    setColor(OFF);
-  } else if (outcome == 1) {
-    brightness = 150;
-    setColor(OFF);
-  } else if (outcome == 2) {
-    brightness = 255;
-    setColor(WHITE);
+  setColor(OFF);
+  bool layout[6];
+  bool rockLayout[6] = {true, true, true, true, false, false};
+  bool paperLayout[6] = {false, true, true, false, true, true};
+  bool scissorLayout[6] = {true, false, true, false, true, false};
+  Color currentColor;
+  //determine layout and default color
+  switch (choice) {
+    case 1:
+      FOREACH_FACE(f) {
+        layout[f] = rockLayout[f];
+      }
+      currentColor = BLUE;
+      break;
+    case 2:
+      FOREACH_FACE(f) {
+        layout[f] = paperLayout[f];
+      }
+      currentColor = YELLOW;
+      break;
+    case 3:
+      FOREACH_FACE(f) {
+        layout[f] = scissorLayout[f];
+      }
+      currentColor = RED;
+      break;
   }
 
-  switch (choice) {
-    case ROCK:
-      setColorOnFace(dim(BLUE, brightness), 0);
-      setColorOnFace(dim(BLUE, brightness), 1);
-      setColorOnFace(dim(BLUE, brightness), 2);
-      setColorOnFace(dim(BLUE, brightness), 3);
-      break;
-    case PAPER:
-      setColorOnFace(dim(YELLOW, brightness), 1);
-      setColorOnFace(dim(YELLOW, brightness), 2);
-      setColorOnFace(dim(YELLOW, brightness), 4);
-      setColorOnFace(dim(YELLOW, brightness), 5);
-      break;
-    case SCISSOR:
-      setColorOnFace(dim(RED, brightness), 0);
-      setColorOnFace(dim(RED, brightness), 2);
-      setColorOnFace(dim(RED, brightness), 4);
-      break;
+  //determine flash color change
+  if (animFrame == 0) {
+    switch (outcome) {
+      case 0://losers flash off
+        currentColor = OFF;
+        break;
+      case 2://winners flash on
+        currentColor = WHITE;
+        break;
+    }
+  }
+
+  //apply the color
+  FOREACH_FACE(f) {
+    if (layout[f]) {
+      setColorOnFace(currentColor, f);
+    }
   }
 }
 
 void rpsOSDisplay(byte frame) {
-  byte brightness = frame * 230 + 25;
-  setColor(dim(WHITE, 25));
-  setColorOnFace(dim(WHITE, brightness), 0);
-  setColorOnFace(dim(WHITE, brightness), 2);
-  setColorOnFace(dim(WHITE, brightness), 4);
+  setColor(dim(WHITE, 128));
+  if (frame == 0) {
+    setColorOnFace(WHITE, 0);
+    setColorOnFace(WHITE, 2);
+    setColorOnFace(WHITE, 4);
+  }
 }
 
 ///////////////////////////
