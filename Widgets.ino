@@ -15,7 +15,7 @@ int spinInterval = 25;
 byte spinLength;
 
 bool inHiding = false;
-enum rpsChoices {NADA, ROCK, PAPER, SCISSOR};
+enum rpsChoices {NADA, ROCK, PAPER, SCISSOR, HIDING};
 byte rpsSignal = 0;
 
 Color headsColor;
@@ -389,15 +389,6 @@ void rpsLoop() {
       }
     }
 
-    if (animTimer.isExpired()) {
-      if (animFrame == 0) {
-        animFrame = 1;
-      } else {
-        animFrame = 0;
-      }
-      animTimer.set(250);
-    }
-
     //decide how to display win/loss/tie state
     if (neighborsIWin + neighborsILose + neighborsITie > 0) {//first, do I have neighbors at all?
       if (neighborsILose > 0) {
@@ -670,73 +661,76 @@ void timerCountdownDisplay(bool tickOn) {
 void rpsDisplay(byte choice) {
   setColor(OFF);
   switch (choice) {
-    case 1://rock
+    case ROCK:
       setColorOnFace(BLUE, 0);
       setColorOnFace(BLUE, 1);
       setColorOnFace(BLUE, 2);
       setColorOnFace(BLUE, 3);
       break;
-    case 2://paper
+    case PAPER:
       setColorOnFace(YELLOW, 1);
       setColorOnFace(YELLOW, 2);
       setColorOnFace(YELLOW, 4);
       setColorOnFace(YELLOW, 5);
       break;
-    case 3://scissor
+    case SCISSOR:
       setColorOnFace(RED, 0);
       setColorOnFace(RED, 2);
       setColorOnFace(RED, 4);
       break;
-    case 4://hiding
-      setColorOnFace(dim(RED, 128), 0);
-      setColorOnFace(dim(YELLOW, 128), 1);
-      setColorOnFace(dim(BLUE, 128), 2);
-      setColorOnFace(dim(RED, 128), 3);
-      setColorOnFace(dim(YELLOW, 128), 4);
-      setColorOnFace(dim(BLUE, 128), 5);
+    case HIDING:
+      // show rock/paper/scissor for 250ms
+
+      if ((millis() / 300) % 6 == 0) {
+        rpsDisplay(ROCK);
+      }
+      else if ((millis() / 300) % 6 == 2) {
+        rpsDisplay(PAPER);
+      }
+      else if ((millis() / 300) % 6 == 4) {
+        rpsDisplay(SCISSOR);
+      }
+      else {
+        setColor(OFF);  // Blink these babies
+      }
+
+      //      setColorOnFace(dim(RED, 128), 0);
+      //      setColorOnFace(dim(YELLOW, 128), 1);
+      //      setColorOnFace(dim(BLUE, 128), 2);
+      //      setColorOnFace(dim(RED, 128), 3);
+      //      setColorOnFace(dim(YELLOW, 128), 4);
+      //      setColorOnFace(dim(BLUE, 128), 5);
       break;
   }
 }
 
 void rpsCombatDisplay(byte choice, byte outcome) {
   setColor(OFF);
-  bool layout[6];
-  bool rockLayout[6] = {true, true, true, true, false, false};
-  bool paperLayout[6] = {false, true, true, false, true, true};
-  bool scissorLayout[6] = {true, false, true, false, true, false};
+  byte layout[6];
+  byte rockLayout[6] = {1, 1, 1, 1, 0, 0};
+  byte paperLayout[6] = {0, 1, 1, 0, 1, 1};
+  byte scissorLayout[6] = {1, 0, 1, 0, 1, 0};
   Color currentColor;
   //determine layout and default color
   switch (choice) {
-    case 1:
+    case ROCK:
       FOREACH_FACE(f) {
         layout[f] = rockLayout[f];
       }
       currentColor = BLUE;
       break;
-    case 2:
+    case PAPER:
       FOREACH_FACE(f) {
         layout[f] = paperLayout[f];
       }
       currentColor = YELLOW;
       break;
-    case 3:
+    case SCISSOR:
       FOREACH_FACE(f) {
         layout[f] = scissorLayout[f];
       }
       currentColor = RED;
       break;
-  }
-
-  //determine flash color change
-  if (animFrame == 0) {
-    switch (outcome) {
-      case 0://losers flash off
-        currentColor = OFF;
-        break;
-      case 2://winners flash on
-        currentColor = WHITE;
-        break;
-    }
   }
 
   //apply the color
