@@ -256,7 +256,10 @@ void d6Loop() {
 
   if (isAnimating) {
     if (animTimer.isExpired()) {
-      currentVal = rand(5) + 1;
+      byte prevVal = currentVal;
+      while( currentVal == prevVal ) {
+        currentVal = rand(5) + 1;        
+      }
       d6Display(currentVal, false);
       animFrame ++;
       spinInterval += 10;
