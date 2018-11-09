@@ -1,7 +1,7 @@
 ////GENERIC VARIABLES
 bool inChooser = true;
 enum widgetModes {COIN, D6, SPINNER, TIMER, RPS};
-byte currentWidget = TIMER;
+byte currentWidget = COIN;
 byte currentVal = 1;
 enum goSignals {INERT, GOING, RESOLVING, EXEMPT};
 byte goSignal = EXEMPT;
@@ -23,6 +23,7 @@ bool isInBattle = false;
 
 Color headsColor;
 Color tailsColor;
+byte targetVal;
 
 int ticksRemaining;
 Timer tickTimer;
@@ -41,6 +42,7 @@ void setup() {
 void loop() {
   //listen for long press to switch in and out of chooser
   if (buttonLongPressed()) {
+    animTimer.set(0);
     if (inChooser) {//move to the game itself
       inChooser = false;
       switch (currentWidget) {
@@ -70,6 +72,7 @@ void loop() {
       inChooser = true;
       goSignal = EXEMPT;
       inHiding = false;
+      currentVal = 1;
     }
   }
 
@@ -217,27 +220,26 @@ void coinLoop() {
     //there are two ways to start flipping: get clicked or be commanded
     if (buttonSingleClicked() || goSignal == GOING) {//were we clicked?
       isAnimating = true;
-      animFrame = 32 + (rand(1) * 8);
+      animFrame = 0;
       goSignal = GOING;
+      currentVal = currentVal % 2;
+      targetVal = rand(1) + 12;
     }
   }
 
   if (isAnimating) {
     if (animTimer.isExpired()) {
-      coinDisplay(inChooser, currentVal);//display the animation at frame X
+      coinDisplay(inChooser, currentVal % 2);//display the animation at frame X
       if (animFrame % 4 == 2) {//this is the inversion point of value
-        if (currentVal == 1) {
-          currentVal = 2;
-        } else if (currentVal == 2) {
-          currentVal = 1;
-        }
+        currentVal++;
       }
-      animFrame --;
-      animTimer.set(75);
+      animFrame ++;
+      animTimer.set(50);
     }//end of timer loop
 
-    if (animFrame == 3) {
+    if (animFrame % 4 == 1 && currentVal == targetVal) {//the stopping point
       isAnimating = false;
+      currentVal = currentVal % 2;
     }
   }
 }
@@ -257,8 +259,8 @@ void d6Loop() {
   if (isAnimating) {
     if (animTimer.isExpired()) {
       byte prevVal = currentVal;
-      while( currentVal == prevVal ) {
-        currentVal = rand(5) + 1;        
+      while ( currentVal == prevVal ) {
+        currentVal = rand(5) + 1;
       }
       d6Display(currentVal, false);
       animFrame ++;
