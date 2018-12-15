@@ -1,6 +1,6 @@
 ////GENERIC VARIABLES
 bool inChooser = true;
-enum widgetModes {COIN, D6, SPINNER, TIMER, RPS};
+enum widgetModes {COIN, D6, SPINNER, TIMER};
 byte currentWidget = COIN;
 byte currentVal = 1;
 enum goSignals {INERT, GOING, RESOLVING, EXEMPT};
@@ -13,13 +13,6 @@ byte animFrame = 0;
 Color spinnerColors[6] = {RED, ORANGE, YELLOW, GREEN, BLUE, MAGENTA};
 int spinInterval = 25;
 byte spinLength;
-
-bool inHiding = false;
-enum rpsChoices {NADA, ROCK, PAPER, SCISSOR, HIDING};
-enum rpsOutcomes {LOSE, TIE, WIN};
-byte rpsSignal = 0;
-uint32_t timeOfBattleStart = 0;
-bool isInBattle = false;
 
 Color headsColor;
 Color tailsColor;
@@ -63,15 +56,10 @@ void loop() {
         case TIMER:
           currentVal = 1;
           break;
-        case RPS:
-          currentVal = 1;
-          rpsDisplay(currentVal, 255);
-          break;
       }
     } else {
       inChooser = true;
       goSignal = EXEMPT;
-      inHiding = false;
       currentVal = 1;
     }
   }
@@ -98,14 +86,11 @@ void loop() {
       case TIMER:
         timerLoop();
         break;
-      case RPS:
-        rpsLoop();
-        break;
     }
   }
 
   //set up communication
-  byte sendData = (inChooser << 5) + (goSignal << 3) + (inHiding << 2) + (rpsSignal);
+  byte sendData = (inChooser << 5) + (goSignal << 3);
   setValueSentOnAllFaces(sendData);
 
   //dump click data
@@ -151,14 +136,6 @@ void osLoop() {
         timerOSDisplay(currentVal);
         animTimer.set(100);
         break;
-      case RPS:
-        animFrame++;
-        if (animFrame > 44) {
-          animFrame = 0;
-        }
-        rpsOSDisplay(animFrame);
-        animTimer.set(33);
-        break;
     }
   }
 }
@@ -178,13 +155,9 @@ void nextWidget() {
       currentVal = 0;
       break;
     case TIMER:
-      currentWidget = RPS;
-      currentVal = 1;
-      animFrame = 0;
-      break;
-    case RPS:
       currentWidget = COIN;
       currentVal = 1;
+      animFrame = 0;
       break;
   }
 }
@@ -358,94 +331,7 @@ void timerLoop() {
   timerDisplay();
 }
 
-void rpsLoop() {
-  if (!inHiding) {
-    if (buttonSingleClicked()) {
-      currentVal ++;
-      if (currentVal == 4) {
-        currentVal = 1;
-      }
-      rpsDisplay(currentVal, 255);
-      rpsSignal = currentVal;
-    }
 
-    if (buttonDoubleClicked()) { //toggle hiding mode
-      inHiding = true;
-      rpsDisplay(HIDING, 255);
-    }
-  }
-
-  if (inHiding) {//check for double clicks or combat
-    //we need to evaluate all neighbors, see if they are in RPS hidden mode
-    byte neighborsIWin = 0;
-    byte neighborsILose = 0;
-    byte neighborsITie = 0;
-
-    FOREACH_FACE(f) {
-      if (!isValueReceivedOnFaceExpired(f)) { //there is a neighbor here
-        byte neighborData = getLastValueReceivedOnFace(f);
-        if (getRPSHiddenSignal(neighborData) == 1) { //this neighbor is in hiding, ready to play
-
-          byte gameResult = getRPSResult(rpsSignal, getRPSSignal(neighborData));
-
-          if (gameResult == WIN) {
-            neighborsIWin ++;
-          } else if (gameResult == LOSE) {
-            neighborsILose ++;
-          } else {
-            neighborsITie ++;
-          }
-        }
-      }
-    }
-
-    //decide how to display win/loss/tie state
-    if (neighborsIWin + neighborsILose + neighborsITie > 0) {//first, do I have neighbors at all?
-
-      // the moment we enter battle
-      if (!isInBattle) {
-        timeOfBattleStart = millis();
-        isInBattle = true;
-      }
-
-      if (neighborsILose > 0) {
-        rpsCombatDisplay(rpsSignal, LOSE);
-      } else if (neighborsITie > 0) {
-        rpsCombatDisplay(rpsSignal, TIE);
-      } else if (neighborsIWin > 0) {
-        rpsCombatDisplay(rpsSignal, WIN);
-      }
-    } else {//so I'm alone
-      rpsDisplay(HIDING, 255);
-      isInBattle = false;
-    }
-
-    if (buttonDoubleClicked()) { //toggle hiding mode
-      inHiding = false;
-      rpsDisplay(currentVal, 255);
-    }
-  }
-}
-
-byte getRPSResult(byte myChoice, byte neighborChoice) {
-
-  if (myChoice == neighborChoice) {
-    return TIE;
-  }
-
-  if (myChoice == ROCK && neighborChoice == SCISSOR ) {
-    return WIN;
-  }
-  else if (myChoice == SCISSOR && neighborChoice == ROCK) {
-    return LOSE;
-  }
-  else if ( myChoice > neighborChoice ) {
-    return WIN;
-  }
-  else {
-    return LOSE;
-  }
-}
 
 /////////////////
 //DISPLAY LOOPS//
@@ -696,109 +582,7 @@ void timerCountdownDisplay(bool tickOn) {
   }
 }
 
-void rpsDisplay(byte choice, byte brightness) {
 
-  setColor(OFF);
-
-  switch (choice) {
-
-    case ROCK:
-      setColorOnFace(dim(BLUE, brightness), 0);
-      setColorOnFace(dim(BLUE, brightness), 1);
-      setColorOnFace(dim(BLUE, brightness), 2);
-      setColorOnFace(dim(BLUE, brightness), 3);
-      break;
-
-    case PAPER:
-      setColorOnFace(dim(YELLOW, brightness), 1);
-      setColorOnFace(dim(YELLOW, brightness), 2);
-      setColorOnFace(dim(YELLOW, brightness), 4);
-      setColorOnFace(dim(YELLOW, brightness), 5);
-      break;
-
-    case SCISSOR:
-      setColorOnFace(dim(RED, brightness), 0);
-      setColorOnFace(dim(RED, brightness), 2);
-      setColorOnFace(dim(RED, brightness), 4);
-      break;
-
-    case HIDING:
-      // show rock/paper/scissor for 250ms
-
-      if ((millis() / 300) % 6 == 0) {
-        rpsDisplay(ROCK, 192);
-      }
-      else if ((millis() / 300) % 6 == 2) {
-        rpsDisplay(PAPER, 192);
-      }
-      else if ((millis() / 300) % 6 == 4) {
-        rpsDisplay(SCISSOR, 192);
-      }
-      else {
-        setColor(OFF);  // Blink these babies
-      }
-
-      break;
-  }
-}
-
-void rpsCombatDisplay(byte choice, byte outcome) {
-  //
-  uint32_t timeSinceBattleStarted = millis() - timeOfBattleStart;
-
-  if (timeSinceBattleStarted < 1500) {
-    // rock, paper, scissors
-    byte c = (1 + timeSinceBattleStarted / 500);
-    byte bri = 255 - (timeSinceBattleStarted % 500) / 2;
-    rpsDisplay( c, bri);
-  }
-  else {
-    // shoot
-    // handle the outcome
-    if (outcome == WIN) {
-      // Solid victory
-      rpsDisplay( choice, 255);
-    }
-    else if (outcome == LOSE) {
-      // fade out from our choice to nothing... forever
-      byte bri = 0;
-      if (timeSinceBattleStarted - 1500 < 500) {
-        bri = 255 - ((timeSinceBattleStarted - 1500) / 2);
-      }
-      rpsDisplay( choice, bri);
-    }
-    else if (outcome == TIE) {
-      rpsDisplay( choice, 255);
-    }
-  }
-
-}
-
-void rpsOSDisplay(byte frame) {
-
-  // a ghostly rock, paper, scissors
-  byte bri = 255 - (17 * (frame % 15));
-  setColor(dim(WHITE, bri));
-
-  // mask correctly
-  byte c = 1 + (frame / 15);
-  switch (c) {
-    case ROCK:
-      setColorOnFace(OFF, 4);
-      setColorOnFace(OFF, 5);
-      break;
-    case PAPER:
-      setColorOnFace(OFF, 0);
-      setColorOnFace(OFF, 3);
-      break;
-    case SCISSOR:
-      setColorOnFace(OFF, 1);
-      setColorOnFace(OFF, 3);
-      setColorOnFace(OFF, 5);
-      break;
-    default: break;
-  }
-}
 
 ///////////////////////////
 //COMMUNICATION FUNCTIONS//
@@ -810,14 +594,6 @@ byte getOSMode(byte data) {
 
 byte getGoSignal(byte data) {
   return ((data >> 3) & 3);//second and third bit
-}
-
-byte getRPSHiddenSignal(byte data) { //fourth bit
-  return ((data >> 2) & 1);
-}
-
-byte getRPSSignal(byte data) {
-  return (data & 3);//last two bits
 }
 
 bool goCheck() {
