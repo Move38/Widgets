@@ -1,3 +1,20 @@
+/*
+ *  Widgets
+ *  by Move38, Inc. 2019
+ *  Lead development by Dan King
+ *  original game by Dan King, Vanilla Liu, Justin Ha, Junege Hong, Kristina Atanasoski, Jonathan Bobrow
+ *
+ *  Rules: https://github.com/Move38/Widgets/blob/master/README.md
+ *
+ *  --------------------
+ *  Blinks by Move38
+ *  Brought to life via Kickstarter 2018
+ *
+ *  @madewithblinks
+ *  www.move38.com
+ *  --------------------
+ */
+
 ////GENERIC VARIABLES
 bool inChooser = true;
 enum widgetModes {COIN, D6, SPINNER, TIMER};
