@@ -31,11 +31,10 @@ byte currentOutcome = 1;
 #define DICE_ROLL_INTERVAL 75
 #define COIN_FLIP_INTERVAL 500
 
-#define SPINNER_FASTEST_INTERVAL 50
-#define SPINNER_SLOWEST_INTERVAL 500
+#define SPINNER_INTERVAL_RESET 25
 #define SPINNER_ACTIVE_DIM 100
 #define SPINNER_FINAL_DIM 50
-
+word spinInterval = SPINNER_INTERVAL_RESET;
 
 void setup() {
   startWidget();
@@ -160,8 +159,9 @@ void startWidget() {
       break;
     case SPINNER:
       //totalAnimationTimer.set(SPINNER_DURATION);
-      framesRemaining = random(5) + 36;
-      animTimer.set(SPINNER_FASTEST_INTERVAL);
+      framesRemaining = random(5) + 42;
+      spinInterval = SPINNER_INTERVAL_RESET;
+      animTimer.set(spinInterval);
       goSignal = GO;
       break;
     case COIN:
@@ -220,11 +220,11 @@ void spinnerLoop() {
   if (animTimer.isExpired() && framesRemaining > 0) {
     framesRemaining--;
     //determine how long the next frame is
-    if (framesRemaining > 12) {//we're still spinning at max speed
-      animTimer.set(SPINNER_FASTEST_INTERVAL);
-    } else {//we're in the slow down
-      animTimer.set(map(12 - framesRemaining, 0, 12, SPINNER_FASTEST_INTERVAL, SPINNER_SLOWEST_INTERVAL));
+    if (framesRemaining < 24) {//we're in the slow down
+      spinInterval = (spinInterval * 23) / 20;
     }
+    animTimer.set(spinInterval);
+
     currentOutcome = (currentOutcome + 1) % 6;
     spinnerFaceDisplay(currentOutcome, SPINNER_ACTIVE_DIM);
     if (framesRemaining == 0) { //this is the last frame
