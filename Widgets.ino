@@ -17,23 +17,54 @@
 
 ////GENERIC VARIABLES////
 enum widgets {DICE, SPINNER, COIN, TIMER};
-byte currentWidget = DICE;
+byte currentWidget = SPINNER;
 enum signalTypes {INERT, GO, RESOLVE};
 byte pushSignal = INERT;
 byte goSignal = INERT;
 
 Timer animTimer;
-#define DICE_ROLL_DURATION 1000
-#define SPINNER_DURATION 1000
-#define COIN_FLIP_DURATION 1000
+byte framesRemaining = 0;
 Color outcomeColors[6] = {RED, ORANGE, YELLOW, GREEN, BLUE, MAGENTA};
-byte randomOutcome = 1;
+byte currentOutcome = 1;
+
+////WIDGET VARIABLES////
+#define DICE_ROLL_INTERVAL 75
+#define COIN_FLIP_INTERVAL 500
+
+#define SPINNER_FASTEST_INTERVAL 50
+#define SPINNER_SLOWEST_INTERVAL 500
+#define SPINNER_ACTIVE_DIM 100
+#define SPINNER_FINAL_DIM 50
+
 
 void setup() {
   startWidget();
 }
 
 void loop() {
+  //listen for button clicks
+  if (buttonSingleClicked()) {
+    startWidget();
+  }
+
+  //listen for signals
+  pushLoop();
+  goLoop();
+
+  //do things
+  switch (currentWidget) {
+    case DICE:
+      diceLoop();
+      break;
+    case SPINNER:
+      spinnerLoop();
+      break;
+    case COIN:
+      break;
+    case TIMER:
+      break;
+  }
+
   //set up communication
   byte sendData = (currentWidget << 4) + (pushSignal << 2) + (goSignal);
   setValueSentOnAllFaces(sendData);
@@ -120,18 +151,106 @@ void goLoop() {
 void startWidget() {
   switch (currentWidget) {
     case DICE:
-      animTimer.set(DICE_ROLL_DURATION);
-      randomOutcome = random(5) + 1;
+      //totalAnimationTimer.set(DICE_ROLL_DURATION);
+      currentOutcome = random(5) + 1;
+      framesRemaining = 25;
+      animTimer.set(DICE_ROLL_INTERVAL);
+      diceFaceDisplay(currentOutcome);
+      goSignal = GO;
       break;
     case SPINNER:
-      animTimer.set(SPINNER_DURATION);
-      randomOutcome = random(5);
+      //totalAnimationTimer.set(SPINNER_DURATION);
+      framesRemaining = random(5) + 36;
+      animTimer.set(SPINNER_FASTEST_INTERVAL);
+      goSignal = GO;
       break;
     case COIN:
-      animTimer.set(COIN_FLIP_DURATION);
-      randomOutcome = random(1);
+      //totalAnimationTimer.set(COIN_FLIP_DURATION);
+      framesRemaining = random(1) + 10;
+      animTimer.set(COIN_FLIP_INTERVAL);
+      goSignal = GO;
       break;
   }
+}
+
+void diceLoop() {
+  if (animTimer.isExpired() && framesRemaining > 0) {
+    animTimer.set(DICE_ROLL_INTERVAL);
+    framesRemaining--;
+    currentOutcome += 5;
+    if (currentOutcome > 6) {
+      currentOutcome = currentOutcome % 6;
+    }
+    diceFaceDisplay(currentOutcome);
+  }
+}
+
+void diceFaceDisplay(byte val) {
+  byte orientFace = random(5);
+  setColor(OFF);
+  switch (val) {
+    case 1:
+      setColorOnFace(RED, orientFace);
+      break;
+    case 2:
+      setColorOnFace(ORANGE, orientFace);
+      setColorOnFace(ORANGE, (orientFace + 3) % 6);
+      break;
+    case 3:
+      setColorOnFace(YELLOW, orientFace);
+      setColorOnFace(YELLOW, (orientFace + 2) % 6);
+      setColorOnFace(YELLOW, (orientFace + 4) % 6);
+      break;
+    case 4:
+      setColor(GREEN);
+      setColorOnFace(OFF, orientFace);
+      setColorOnFace(OFF, (orientFace + 3) % 6);
+      break;
+    case 5:
+      setColor(BLUE);
+      setColorOnFace(OFF, orientFace);
+      break;
+    case 6:
+      setColor(MAGENTA);
+      break;
+  }
+}
+
+void spinnerLoop() {
+  if (animTimer.isExpired() && framesRemaining > 0) {
+    framesRemaining--;
+    //determine how long the next frame is
+    if (framesRemaining > 12) {//we're still spinning at max speed
+      animTimer.set(SPINNER_FASTEST_INTERVAL);
+    } else {//we're in the slow down
+      animTimer.set(map(12 - framesRemaining, 0, 12, SPINNER_FASTEST_INTERVAL, SPINNER_SLOWEST_INTERVAL));
+    }
+    currentOutcome = (currentOutcome + 1) % 6;
+    spinnerFaceDisplay(currentOutcome, SPINNER_ACTIVE_DIM);
+    if (framesRemaining == 0) { //this is the last frame
+      spinnerFaceDisplay(currentOutcome, SPINNER_FINAL_DIM);
+    }
+  }
+}
+
+void spinnerFaceDisplay(byte val, byte dimness) {
+  FOREACH_FACE(f) {
+    setColorOnFace(dim(outcomeColors[f], dimness), f);
+  }
+  if (dimness == SPINNER_ACTIVE_DIM) {
+    setColorOnFace(WHITE, val);
+  } else {
+    setColorOnFace(outcomeColors[val], val);
+  }
+
+}
+
+void coinDisplay() {
+
+}
+
+void timerDisplay() {
+
 }
 
 byte getCurrentWidget(byte data) {
