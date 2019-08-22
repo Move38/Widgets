@@ -38,12 +38,19 @@ word spinInterval = SPINNER_INTERVAL_RESET;
 
 void setup() {
   startWidget();
+  randomize();
 }
 
 void loop() {
   //listen for button clicks
   if (buttonSingleClicked()) {
     startWidget();
+  }
+
+  if (buttonLongPressed()) {
+    currentWidget = (currentWidget + 1) % 4;
+    startWidget();
+    pushSignal = GO;
   }
 
   //listen for signals
@@ -160,14 +167,14 @@ void startWidget() {
       break;
     case SPINNER:
       //totalAnimationTimer.set(SPINNER_DURATION);
-      framesRemaining = random(5) + 42;
+      framesRemaining = random(11) + 36;
       spinInterval = SPINNER_INTERVAL_RESET;
       animTimer.set(spinInterval);
       goSignal = GO;
       break;
     case COIN:
       //totalAnimationTimer.set(COIN_FLIP_DURATION);
-      framesRemaining = random(7) + 20;
+      framesRemaining = random(3) + 22;
       goSignal = GO;
       if (animTimer.isExpired()) {//reset the timer if it isn't currently going
         animTimer.set(COIN_FLIP_INTERVAL);
