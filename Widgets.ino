@@ -29,7 +29,7 @@ byte currentOutcome = 1;
 
 ////WIDGET VARIABLES////
 #define DICE_ROLL_INTERVAL 75
-#define COIN_FLIP_INTERVAL 250
+#define COIN_FLIP_INTERVAL 150
 
 #define SPINNER_INTERVAL_RESET 25
 #define SPINNER_ACTIVE_DIM 100
@@ -153,7 +153,7 @@ void startWidget() {
     case DICE:
       //totalAnimationTimer.set(DICE_ROLL_DURATION);
       currentOutcome = random(5) + 1;
-      framesRemaining = 25;
+      framesRemaining = 20 + random(5);
       animTimer.set(DICE_ROLL_INTERVAL);
       diceFaceDisplay(currentOutcome);
       goSignal = GO;
@@ -167,7 +167,7 @@ void startWidget() {
       break;
     case COIN:
       //totalAnimationTimer.set(COIN_FLIP_DURATION);
-      framesRemaining = random(5) + 10;
+      framesRemaining = random(7) + 20;
       goSignal = GO;
       if (animTimer.isExpired()) {//reset the timer if it isn't currently going
         animTimer.set(COIN_FLIP_INTERVAL);
@@ -280,23 +280,48 @@ void coinDisplay(bool finalFlip) {
     faceColor = WHITE;
   }
 
-  //so we need to show a certain state of animation based on getRemaining
-  byte animationPosition = 255 - map(animTimer.getRemaining(), 0, COIN_FLIP_INTERVAL, 0, 255);
+  byte animPosition = COIN_FLIP_INTERVAL - animTimer.getRemaining();
+  byte leftStart = 0;
+  byte centerStart = COIN_FLIP_INTERVAL / 6;
+  byte rightStart = COIN_FLIP_INTERVAL / 3;
+  byte edgeDuration = (COIN_FLIP_INTERVAL / 3) * 2;
+
   setColor(OFF);
-  if (animationPosition < 255 / 3) {//first frame
+
+  if (animPosition >= leftStart && animPosition <= leftStart + edgeDuration) {
+    byte brightness = sin8_C(map(animPosition, leftStart, leftStart + edgeDuration, 0, 255));
+    setColorOnFace(dim(faceColor, brightness), 0);
+    setColorOnFace(dim(faceColor, brightness), 1);
+  }
+
+  if (finalFlip && animPosition >= leftStart + (edgeDuration / 2)) {
     setColorOnFace(faceColor, 0);
     setColorOnFace(faceColor, 1);
-  } else if (animationPosition < 2 * (255 / 3)) {//second frame
+  }
+
+  if (animPosition >= centerStart && animPosition <= centerStart + edgeDuration) {
+    byte brightness = sin8_C(map(animPosition, centerStart, centerStart + edgeDuration, 0, 255));
+    setColorOnFace(dim(faceColor, brightness), 2);
+    setColorOnFace(dim(faceColor, brightness), 5);
+  }
+
+  if (finalFlip && animPosition >= centerStart + (edgeDuration / 2)) {
     setColorOnFace(faceColor, 2);
     setColorOnFace(faceColor, 5);
-  } else {//third frame
-    if (finalFlip) {
-      setColor(faceColor);
-    } else {
-      setColorOnFace(faceColor, 3);
-      setColorOnFace(faceColor, 4);
-    }
   }
+
+  if (animPosition >= rightStart && animPosition <= rightStart + edgeDuration) {
+    byte brightness = sin8_C(map(animPosition, rightStart, rightStart + edgeDuration, 0, 255));
+    setColorOnFace(dim(faceColor, brightness), 3);
+    setColorOnFace(dim(faceColor, brightness), 4);
+  }
+
+  if (finalFlip && animPosition >= rightStart + (edgeDuration / 2)) {
+    setColorOnFace(faceColor, 3);
+    setColorOnFace(faceColor, 4);
+  }
+
+
 }
 
 void timerDisplay() {
