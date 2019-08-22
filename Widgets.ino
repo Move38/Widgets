@@ -167,7 +167,7 @@ void startWidget() {
       break;
     case COIN:
       //totalAnimationTimer.set(COIN_FLIP_DURATION);
-      framesRemaining = random(1) + 10;
+      framesRemaining = random(5) + 10;
       goSignal = GO;
       if (animTimer.isExpired()) {//reset the timer if it isn't currently going
         animTimer.set(COIN_FLIP_INTERVAL);
@@ -265,43 +265,37 @@ void coinLoop() {
     }
   }
 
-  coinDisplay();
+  if (framesRemaining == 0) {
+    coinDisplay(true);
+  } else {
+    coinDisplay(false);
+  }
 }
 
-void coinDisplay() {
-  //  //so we need to show a certain state of animation based on getRemaining
-  byte animationPosition = 255 - map(animTimer.getRemaining(), 0, COIN_FLIP_INTERVAL, 0, 255);
-  //  //determine the color we should be showing
-  //  Color coinFaceUpColor = YELLOW;
-  //  if ((animationPosition < 128 && currentOutcome == 1) || (animationPosition > 127 && currentOutcome == 0)) {
-  //    coinFaceUpColor = WHITE;
-  //  }
-  //  //determine edge brightness (runs from 255 to 0 back to 255)
-  //  byte sinPosition = 255 - sin8_C(animationPosition);
-  //  //determine center brightness(runs from 255 to 128 back to 255)
-  //  byte centerBrightness = map(sinPosition, 0, 255, 128, 255);
-  //  //determine left and right brightness
-  //  byte leftBrightness = 0;
-  //  byte rightBrightness = 0;
-  //  if (animationPosition < 255 / 3) {//upswing
-  //    leftBrightness = 128;
-  //    rightBrightness = 128;
-  //  } else if (animationPosition > (2 * 255) / 3) {//downswing
-  //    rightBrightness = 128;
-  //    leftBrightness = 128;
-  //  }
-  //
-  //  setColorOnFace(dim(coinFaceUpColor, centerBrightness), 0);
-  //  setColorOnFace(dim(coinFaceUpColor, leftBrightness), 1);
-  //  setColorOnFace(dim(coinFaceUpColor, leftBrightness), 2);
-  //  setColorOnFace(dim(coinFaceUpColor, centerBrightness), 3);
-  //  setColorOnFace(dim(coinFaceUpColor, rightBrightness), 4);
-  //  setColorOnFace(dim(coinFaceUpColor, rightBrightness), 5);
-
+void coinDisplay(bool finalFlip) {
+  Color faceColor;
   if (currentOutcome == 0) {
-    setColor(dim(WHITE, animationPosition));
+    faceColor = YELLOW;
   } else {
-    setColor(dim(YELLOW, animationPosition));
+    faceColor = WHITE;
+  }
+
+  //so we need to show a certain state of animation based on getRemaining
+  byte animationPosition = 255 - map(animTimer.getRemaining(), 0, COIN_FLIP_INTERVAL, 0, 255);
+  setColor(OFF);
+  if (animationPosition < 255 / 3) {//first frame
+    setColorOnFace(faceColor, 0);
+    setColorOnFace(faceColor, 1);
+  } else if (animationPosition < 2 * (255 / 3)) {//second frame
+    setColorOnFace(faceColor, 2);
+    setColorOnFace(faceColor, 5);
+  } else {//third frame
+    if (finalFlip) {
+      setColor(faceColor);
+    } else {
+      setColorOnFace(faceColor, 3);
+      setColorOnFace(faceColor, 4);
+    }
   }
 }
 
