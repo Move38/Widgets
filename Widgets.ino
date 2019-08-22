@@ -39,8 +39,8 @@ Timer spinnerFinalPulseTimer;
 #define SPINNER_PULSE_DURATION 1000
 
 void setup() {
-  startWidget();
   randomize();
+  startWidget();
 }
 
 void loop() {
@@ -262,7 +262,7 @@ void spinnerFaceDisplay(byte val, bool spinning) {
     if (spinnerFinalPulseTimer.isExpired()) {
       spinnerFinalPulseTimer.set(SPINNER_PULSE_DURATION);
     }
-    byte saturation = sin8_C(map(spinnerFinalPulseTimer.getRemaining(), 0, SPINNER_PULSE_DURATION, 0, 255))
+    byte saturation = sin8_C(map(spinnerFinalPulseTimer.getRemaining(), 0, SPINNER_PULSE_DURATION, 0, 255));
     setColorOnFace(makeColorHSB(outcomeColors[val], saturation, 255), val);
   }
 }
