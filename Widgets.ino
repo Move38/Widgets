@@ -17,14 +17,14 @@
 
 ////GENERIC VARIABLES////
 enum widgets {DICE, SPINNER, COIN, TIMER};
-byte currentWidget = COIN;
+byte currentWidget = SPINNER;
 enum signalTypes {INERT, GO, RESOLVE};
 byte pushSignal = INERT;
 byte goSignal = INERT;
 
 Timer animTimer;
 byte framesRemaining = 0;
-Color outcomeColors[6] = {RED, ORANGE, YELLOW, GREEN, BLUE, MAGENTA};
+byte outcomeColors[6] = {0, 21, 42, 85, 170, 212};
 byte currentOutcome = 1;
 
 ////WIDGET VARIABLES////
@@ -32,9 +32,11 @@ byte currentOutcome = 1;
 #define COIN_FLIP_INTERVAL 150
 
 #define SPINNER_INTERVAL_RESET 25
-#define SPINNER_ACTIVE_DIM 100
-#define SPINNER_FINAL_DIM 50
+#define SPINNER_ACTIVE_DIM 196
+#define SPINNER_FINAL_DIM 128
 word spinInterval = SPINNER_INTERVAL_RESET;
+Timer spinnerFinalPulseTimer;
+#define SPINNER_PULSE_DURATION 1000
 
 void setup() {
   startWidget();
@@ -208,31 +210,31 @@ void diceFaceDisplay(byte val) {
       setColorOnFace(RED, orientFace);
       break;
     case 2:
-      setColorOnFace(ORANGE, orientFace);
-      setColorOnFace(ORANGE, (orientFace + 3) % 6);
+      setColorOnFace(RED, orientFace);
+      setColorOnFace(RED, (orientFace + 3) % 6);
       break;
     case 3:
-      setColorOnFace(YELLOW, orientFace);
-      setColorOnFace(YELLOW, (orientFace + 2) % 6);
-      setColorOnFace(YELLOW, (orientFace + 4) % 6);
+      setColorOnFace(RED, orientFace);
+      setColorOnFace(RED, (orientFace + 2) % 6);
+      setColorOnFace(RED, (orientFace + 4) % 6);
       break;
     case 4:
-      setColor(GREEN);
+      setColor(RED);
       setColorOnFace(OFF, orientFace);
       setColorOnFace(OFF, (orientFace + 3) % 6);
       break;
     case 5:
-      setColor(BLUE);
+      setColor(RED);
       setColorOnFace(OFF, orientFace);
       break;
     case 6:
-      setColor(MAGENTA);
+      setColor(RED);
       break;
   }
 }
 
 void spinnerLoop() {
-  if (animTimer.isExpired() && framesRemaining > 0) {
+  if (animTimer.isExpired() && framesRemaining > 0) {//actively spinning
     framesRemaining--;
     //determine how long the next frame is
     if (framesRemaining < 24) {//we're in the slow down
@@ -241,23 +243,28 @@ void spinnerLoop() {
     animTimer.set(spinInterval);
 
     currentOutcome = (currentOutcome + 1) % 6;
-    spinnerFaceDisplay(currentOutcome, SPINNER_ACTIVE_DIM);
+    spinnerFaceDisplay(currentOutcome, true);
     if (framesRemaining == 0) { //this is the last frame
-      spinnerFaceDisplay(currentOutcome, SPINNER_FINAL_DIM);
+      spinnerFinalPulseTimer.set(SPINNER_PULSE_DURATION);
     }
+  } else if (framesRemaining == 0) { //just hanging out
+    spinnerFaceDisplay(currentOutcome, false);
   }
 }
 
-void spinnerFaceDisplay(byte val, byte dimness) {
-  FOREACH_FACE(f) {
-    setColorOnFace(dim(outcomeColors[f], dimness), f);
-  }
-  if (dimness == SPINNER_ACTIVE_DIM) {
+void spinnerFaceDisplay(byte val, bool spinning) {
+  if (spinning) {
+    FOREACH_FACE(f) {
+      setColorOnFace(makeColorHSB(outcomeColors[f], 255, SPINNER_ACTIVE_DIM), f);
+    }
     setColorOnFace(WHITE, val);
   } else {
-    setColorOnFace(outcomeColors[val], val);
+    if (spinnerFinalPulseTimer.isExpired()) {
+      spinnerFinalPulseTimer.set(SPINNER_PULSE_DURATION);
+    }
+    byte saturation = sin8_C(map(spinnerFinalPulseTimer.getRemaining(), 0, SPINNER_PULSE_DURATION, 0, 255))
+    setColorOnFace(makeColorHSB(outcomeColors[val], saturation, 255), val);
   }
-
 }
 
 void coinLoop() {
