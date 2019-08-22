@@ -17,7 +17,7 @@
 
 ////GENERIC VARIABLES////
 enum widgets {DICE, SPINNER, COIN, TIMER};
-byte currentWidget = SPINNER;
+byte currentWidget = COIN;
 enum signalTypes {INERT, GO, RESOLVE};
 byte pushSignal = INERT;
 byte goSignal = INERT;
@@ -29,7 +29,7 @@ byte currentOutcome = 1;
 
 ////WIDGET VARIABLES////
 #define DICE_ROLL_INTERVAL 75
-#define COIN_FLIP_INTERVAL 500
+#define COIN_FLIP_INTERVAL 250
 
 #define SPINNER_INTERVAL_RESET 25
 #define SPINNER_ACTIVE_DIM 100
@@ -59,6 +59,7 @@ void loop() {
       spinnerLoop();
       break;
     case COIN:
+      coinLoop();
       break;
     case TIMER:
       break;
@@ -167,8 +168,15 @@ void startWidget() {
     case COIN:
       //totalAnimationTimer.set(COIN_FLIP_DURATION);
       framesRemaining = random(1) + 10;
-      animTimer.set(COIN_FLIP_INTERVAL);
       goSignal = GO;
+      if (animTimer.isExpired()) {//reset the timer if it isn't currently going
+        animTimer.set(COIN_FLIP_INTERVAL);
+        if (currentOutcome == 0) {
+          currentOutcome = 1;
+        } else {
+          currentOutcome = 0;
+        }
+      }
       break;
   }
 }
@@ -245,8 +253,56 @@ void spinnerFaceDisplay(byte val, byte dimness) {
 
 }
 
-void coinDisplay() {
+void coinLoop() {
+  if (animTimer.isExpired() && framesRemaining > 0) {
+    framesRemaining--;
+    animTimer.set(COIN_FLIP_INTERVAL);
+    //change the outcome from 0 to 1 and back
+    if (currentOutcome == 0) {
+      currentOutcome = 1;
+    } else {
+      currentOutcome = 0;
+    }
+  }
 
+  coinDisplay();
+}
+
+void coinDisplay() {
+  //  //so we need to show a certain state of animation based on getRemaining
+  byte animationPosition = 255 - map(animTimer.getRemaining(), 0, COIN_FLIP_INTERVAL, 0, 255);
+  //  //determine the color we should be showing
+  //  Color coinFaceUpColor = YELLOW;
+  //  if ((animationPosition < 128 && currentOutcome == 1) || (animationPosition > 127 && currentOutcome == 0)) {
+  //    coinFaceUpColor = WHITE;
+  //  }
+  //  //determine edge brightness (runs from 255 to 0 back to 255)
+  //  byte sinPosition = 255 - sin8_C(animationPosition);
+  //  //determine center brightness(runs from 255 to 128 back to 255)
+  //  byte centerBrightness = map(sinPosition, 0, 255, 128, 255);
+  //  //determine left and right brightness
+  //  byte leftBrightness = 0;
+  //  byte rightBrightness = 0;
+  //  if (animationPosition < 255 / 3) {//upswing
+  //    leftBrightness = 128;
+  //    rightBrightness = 128;
+  //  } else if (animationPosition > (2 * 255) / 3) {//downswing
+  //    rightBrightness = 128;
+  //    leftBrightness = 128;
+  //  }
+  //
+  //  setColorOnFace(dim(coinFaceUpColor, centerBrightness), 0);
+  //  setColorOnFace(dim(coinFaceUpColor, leftBrightness), 1);
+  //  setColorOnFace(dim(coinFaceUpColor, leftBrightness), 2);
+  //  setColorOnFace(dim(coinFaceUpColor, centerBrightness), 3);
+  //  setColorOnFace(dim(coinFaceUpColor, rightBrightness), 4);
+  //  setColorOnFace(dim(coinFaceUpColor, rightBrightness), 5);
+
+  if (currentOutcome == 0) {
+    setColor(dim(WHITE, animationPosition));
+  } else {
+    setColor(dim(YELLOW, animationPosition));
+  }
 }
 
 void timerDisplay() {
