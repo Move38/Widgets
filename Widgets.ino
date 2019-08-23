@@ -17,7 +17,7 @@
 
 ////GENERIC VARIABLES////
 enum widgets {DICE, SPINNER, COIN, TIMER};
-byte currentWidget = SPINNER;
+byte currentWidget = TIMER;
 enum signalTypes {INERT, GO, RESOLVE};
 byte pushSignal = INERT;
 byte goSignal = INERT;
@@ -38,6 +38,9 @@ word spinInterval = SPINNER_INTERVAL_RESET;
 Timer spinnerFinalPulseTimer;
 #define SPINNER_PULSE_DURATION 1000
 
+enum timerModes {SETTING, TIMING, ALARM};
+byte timerMode = SETTING;
+
 void setup() {
   randomize();
   startWidget();
@@ -46,12 +49,21 @@ void setup() {
 void loop() {
   //listen for button clicks
   if (buttonSingleClicked()) {
-    startWidget();
+    if (currentWidget == TIMER) {//we're in the timer
+      if (timerMode == SETTING) {//it's not currently going
+        if (currentOutcome == 5) {
+          currentOutcome = 1;
+        } else {
+          currentOutcome++;
+        }
+      }
+    } else {
+      startWidget();
+    }
   }
 
   if (buttonLongPressed()) {
     currentWidget = (currentWidget + 1) % 4;
-    startWidget();
     pushSignal = GO;
   }
 
@@ -71,6 +83,7 @@ void loop() {
       coinLoop();
       break;
     case TIMER:
+      timerLoop();
       break;
   }
 
@@ -168,14 +181,12 @@ void startWidget() {
       goSignal = GO;
       break;
     case SPINNER:
-      //totalAnimationTimer.set(SPINNER_DURATION);
       framesRemaining = random(11) + 36;
       spinInterval = SPINNER_INTERVAL_RESET;
       animTimer.set(spinInterval);
       goSignal = GO;
       break;
     case COIN:
-      //totalAnimationTimer.set(COIN_FLIP_DURATION);
       framesRemaining = random(3) + 22;
       goSignal = GO;
       if (animTimer.isExpired()) {//reset the timer if it isn't currently going
@@ -335,11 +346,72 @@ void coinDisplay(bool finalFlip) {
     setColorOnFace(faceColor, 4);
   }
 
+}
 
+void timerLoop() {
+
+  switch (timerMode) {
+    case SETTING:
+      if (buttonDoubleClicked()) {
+        animTimer.set(currentOutcome * 60000);
+        timerMode = TIMING;
+      }
+      break;
+    case TIMING:
+      if (buttonDoubleClicked()) {
+        timerMode = SETTING;
+      }
+
+      if (animTimer.isExpired()) {
+        timerMode = ALARM;
+        animTimer.set(100);
+      }
+      break;
+    case ALARM:
+      if (buttonDoubleClicked()) {
+        timerMode = SETTING;
+      }
+      break;
+
+      if (animTimer.isExpired()) {
+        animTimer.set(100);
+      }
+  }
+
+  timerDisplay();
 }
 
 void timerDisplay() {
+  switch (timerMode) {
+    case SETTING:
+      FOREACH_FACE(f) {
+        byte brightness = 50;
+        if (f <= currentOutcome) {
+          brightness = 255;
+        }
+        setColorOnFace(makeColorHSB(outcomeColors[currentOutcome - 1], 255, brightness), f);
+      }
+      setColorOnFace(WHITE, 0);
+      break;
+    case TIMING:
+      //set overall face color
+      byte minutesRemaining = animTimer.getRemaining() / 60000;//0-4
+      byte progressBrightness = map((minutesRemaining * 60000) - animTimer.getRemaining(), 0, 60000, 127, 255);
+      setColor(makeColorHSB(outcomeColors[minutesRemaining], 255, progressBrightness));
 
+      //set the little ticking color on a specific face
+      if (animTimer.getRemaining() / 1000 <= 500) {
+        setColorOnFace(WHITE, (animTimer.getRemaining() / 1000) % 6);
+      }
+      break;
+    case ALARM:
+      if (animTimer.getRemaining() <= 50) {
+        setColor(makeColorHSB(outcomeColors[0], 255, 128));
+      } else {
+        setColor(makeColorHSB(outcomeColors[0], 255, 255));
+      }
+      break;
+  }
 }
 
 byte getCurrentWidget(byte data) {
