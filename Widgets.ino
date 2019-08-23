@@ -64,6 +64,7 @@ void loop() {
 
   if (buttonLongPressed()) {
     currentWidget = (currentWidget + 1) % 4;
+    startWidget();
     pushSignal = GO;
   }
 
@@ -405,11 +406,12 @@ void timerDisplay() {
       }
       break;
     case ALARM:
-      if (animTimer.getRemaining() <= 50) {
-        setColor(makeColorHSB(outcomeColors[0], 255, 128));
-      } else {
-        setColor(makeColorHSB(outcomeColors[0], 255, 255));
-      }
+      //      if (animTimer.getRemaining() <= 50) {
+      //        setColor(makeColorHSB(outcomeColors[0], 255, 128));
+      //      } else {
+      //        setColor(makeColorHSB(outcomeColors[0], 255, 255));
+      //      }
+      setColor(WHITE);
       break;
   }
 }
