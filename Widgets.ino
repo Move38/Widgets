@@ -40,7 +40,7 @@ Timer spinnerFinalPulseTimer;
 
 enum timerModes {SETTING, TIMING, ALARM};
 byte timerMode = SETTING;
-#define TIMER_SETTING_TICK 150
+#define TIMER_SETTING_TICK 250
 
 void setup() {
   randomize();
@@ -54,10 +54,10 @@ void loop() {
       if (timerMode == SETTING) {//it's not currently going
         if (currentOutcome == 5) {
           currentOutcome = 1;
-          animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 4));
+          animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 3));
         } else {
           currentOutcome++;
-          animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 4));
+          animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 3));
         }
       }
     } else {
@@ -70,7 +70,7 @@ void loop() {
     pushSignal = GO;
     if (currentWidget == TIMER) {
       currentOutcome = 1;
-      animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 4));
+      animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 3));
     } else {
       startWidget();
     }
@@ -116,7 +116,7 @@ void pushLoop() {
             startWidget();
           } else {
             currentOutcome = 1;
-            animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 4));
+            animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 3));
           }
         }
       }
@@ -380,7 +380,7 @@ void timerLoop() {
   if (animTimer.isExpired()) {
     switch (timerMode) {
       case SETTING:
-        animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 4));
+        animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 3));
         break;
       case TIMING:
         timerMode = ALARM;
@@ -400,7 +400,7 @@ void timerDisplay() {
     case SETTING:
       //set color thing going
       {
-        byte animFrame = ((TIMER_SETTING_TICK * (currentOutcome + 4)) - animTimer.getRemaining()) / TIMER_SETTING_TICK;//0-X
+        byte animFrame = ((TIMER_SETTING_TICK * (currentOutcome + 3)) - animTimer.getRemaining()) / TIMER_SETTING_TICK;//0-X
         if (animFrame == 0) {//the off frame
           setColor(OFF);
         } else {//the rest of the frames
