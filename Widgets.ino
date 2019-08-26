@@ -17,7 +17,7 @@
 
 ////GENERIC VARIABLES////
 enum widgets {DICE, SPINNER, COIN, TIMER};
-byte currentWidget = TIMER;
+byte currentWidget = DICE;
 enum signalTypes {INERT, GO, RESOLVE};
 byte pushSignal = INERT;
 byte goSignal = INERT;
@@ -26,6 +26,8 @@ Timer animTimer;
 byte framesRemaining = 0;
 byte outcomeColors[6] = {0, 21, 42, 85, 170, 212};
 byte currentOutcome = 1;
+
+bool bChange = false;
 
 ////WIDGET VARIABLES////
 #define DICE_ROLL_INTERVAL 75
@@ -48,6 +50,15 @@ void setup() {
 }
 
 void loop() {
+
+  // discard the change mode from a force sleep
+  if (hasWoken()) {
+    bChange = false;
+    if (currentWidget == DICE) {
+      diceFaceDisplay(currentOutcome);
+    }
+  }
+
   //listen for button clicks
   if (buttonSingleClicked()) {
     if (currentWidget == TIMER) {//we're in the timer
@@ -66,14 +77,12 @@ void loop() {
   }
 
   if (buttonLongPressed()) {
-    currentWidget = (currentWidget + 1) % 4;
-    pushSignal = GO;
-    if (currentWidget == TIMER) {
-      currentOutcome = 1;
-      animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 3));
-    } else {
-      startWidget();
-    }
+    bChange = true;
+  }
+
+  if (buttonReleased() && bChange) {
+    changeWidget();
+    bChange = false;
   }
 
   //listen for signals
@@ -99,6 +108,22 @@ void loop() {
   //set up communication
   byte sendData = (currentWidget << 4) + (pushSignal << 2) + (goSignal);
   setValueSentOnAllFaces(sendData);
+
+  //set it to all white if waiting for longpress release
+  if (bChange) {
+    setColor(WHITE);
+  }
+}
+
+void changeWidget() {
+  currentWidget = (currentWidget + 1) % 4;
+  pushSignal = GO;
+  if (currentWidget == TIMER) {
+    currentOutcome = 1;
+    animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 3));
+  } else {
+    startWidget();
+  }
 }
 
 void pushLoop() {
