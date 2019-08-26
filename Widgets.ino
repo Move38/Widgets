@@ -355,33 +355,60 @@ void coinDisplay(bool finalFlip) {
 
 void timerLoop() {
 
-  switch (timerMode) {
-    case SETTING:
-      if (buttonDoubleClicked()) {
-        animTimer.set(currentOutcome * 60000);
+  if (buttonDoubleClicked()) {
+    switch (timerMode) {
+      case SETTING:
+        animTimer.set((currentOutcome * 60000) - 1);
         timerMode = TIMING;
-      }
-      break;
-    case TIMING:
-      if (buttonDoubleClicked()) {
+        break;
+      case TIMING:
         timerMode = SETTING;
-      }
+        break;
+      case ALARM:
+        timerMode = SETTING;
+        break;
+    }
+  }
 
-      if (animTimer.isExpired()) {
+  if (animTimer.isExpired()) {
+    switch (timerMode) {
+      case TIMING:
         timerMode = ALARM;
         animTimer.set(100);
-      }
-      break;
-    case ALARM:
-      if (buttonDoubleClicked()) {
-        timerMode = SETTING;
-      }
-      break;
-
-      if (animTimer.isExpired()) {
+        break;
+      case ALARM:
         animTimer.set(100);
-      }
+        break;
+    }
   }
+
+  //  switch (timerMode) {
+  //    case SETTING:
+  //      if (buttonDoubleClicked()) {
+  //        animTimer.set(currentOutcome * 60000);
+  //        timerMode = TIMING;
+  //      }
+  //      break;
+  //    case TIMING:
+  //      if (buttonDoubleClicked()) {
+  //        timerMode = SETTING;
+  //      }
+  //
+  //      if (animTimer.isExpired()) {
+  //        timerMode = ALARM;
+  //        animTimer.set(100);
+  //      }
+  //      break;
+  //    case ALARM:
+  //      if (buttonDoubleClicked()) {
+  //        timerMode = SETTING;
+  //      }
+  //
+  //      if (animTimer.isExpired()) {
+  //        animTimer.set(100);
+  //      }
+  //      break;
+  //  }
 
   timerDisplay();
 }
@@ -400,22 +427,24 @@ void timerDisplay() {
       break;
     case TIMING:
       //set overall face color
-      byte minutesRemaining = animTimer.getRemaining() / 60000;//0-4
-      byte progressBrightness = map((minutesRemaining * 60000) - animTimer.getRemaining(), 0, 60000, 127, 255);
-      setColor(makeColorHSB(outcomeColors[minutesRemaining], 255, progressBrightness));
+      {
+        byte minutesRemaining = animTimer.getRemaining() / 60000;//0-4
+        byte progressBrightness = map((minutesRemaining * 60000) - animTimer.getRemaining(), 0, 60000, 127, 255);
+        setColor(makeColorHSB(outcomeColors[minutesRemaining], 255, progressBrightness));
 
-      //set the little ticking color on a specific face
-      if (animTimer.getRemaining() / 1000 <= 500) {
-        setColorOnFace(WHITE, 5 - ((animTimer.getRemaining() / 1000) % 6));
+        //set the little ticking color on a specific face
+        if (animTimer.getRemaining() % 1000 <= 500) {
+          setColorOnFace(WHITE, 5 - ((animTimer.getRemaining() / 1000) % 6));
+        }
       }
       break;
     case ALARM:
-      //      if (animTimer.getRemaining() <= 50) {
-      //        setColor(makeColorHSB(outcomeColors[0], 255, 128));
-      //      } else {
-      //        setColor(makeColorHSB(outcomeColors[0], 255, 255));
-      //      }
-      setColor(WHITE);
+      if (animTimer.getRemaining() <= 50) {
+        setColor(makeColorHSB(outcomeColors[0], 255, 128));
+      } else {
+        setColor(makeColorHSB(outcomeColors[0], 255, 255));
+      }
+      //setColor(WHITE);
       break;
   }
 }
