@@ -382,34 +382,6 @@ void timerLoop() {
     }
   }
 
-  //  switch (timerMode) {
-  //    case SETTING:
-  //      if (buttonDoubleClicked()) {
-  //        animTimer.set(currentOutcome * 60000);
-  //        timerMode = TIMING;
-  //      }
-  //      break;
-  //    case TIMING:
-  //      if (buttonDoubleClicked()) {
-  //        timerMode = SETTING;
-  //      }
-  //
-  //      if (animTimer.isExpired()) {
-  //        timerMode = ALARM;
-  //        animTimer.set(100);
-  //      }
-  //      break;
-  //    case ALARM:
-  //      if (buttonDoubleClicked()) {
-  //        timerMode = SETTING;
-  //      }
-  //
-  //      if (animTimer.isExpired()) {
-  //        animTimer.set(100);
-  //      }
-  //      break;
-  //  }
-
   timerDisplay();
 }
 
@@ -444,7 +416,6 @@ void timerDisplay() {
       } else {
         setColor(makeColorHSB(outcomeColors[0], 255, 255));
       }
-      //setColor(WHITE);
       break;
   }
 }
