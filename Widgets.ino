@@ -40,7 +40,7 @@ Timer spinnerFinalPulseTimer;
 
 enum timerModes {SETTING, TIMING, ALARM};
 byte timerMode = SETTING;
-#define TIMER_SETTING_TICK 300
+#define TIMER_SETTING_TICK 150
 
 void setup() {
   randomize();
@@ -54,8 +54,10 @@ void loop() {
       if (timerMode == SETTING) {//it's not currently going
         if (currentOutcome == 5) {
           currentOutcome = 1;
+          animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 4));
         } else {
           currentOutcome++;
+          animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 4));
         }
       }
     } else {
@@ -68,7 +70,7 @@ void loop() {
     pushSignal = GO;
     if (currentWidget == TIMER) {
       currentOutcome = 1;
-      animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 2));
+      animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 4));
     } else {
       startWidget();
     }
@@ -114,7 +116,7 @@ void pushLoop() {
             startWidget();
           } else {
             currentOutcome = 1;
-            animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 2));
+            animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 4));
           }
         }
       }
@@ -378,7 +380,7 @@ void timerLoop() {
   if (animTimer.isExpired()) {
     switch (timerMode) {
       case SETTING:
-        animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 2));
+        animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 4));
         break;
       case TIMING:
         timerMode = ALARM;
@@ -396,14 +398,15 @@ void timerLoop() {
 void timerDisplay() {
   switch (timerMode) {
     case SETTING:
-      setColor(OFF);
-
       //set color thing going
       {
-        byte animFrame = ((TIMER_SETTING_TICK * (currentOutcome + 2)) - animTimer.getRemaining()) / TIMER_SETTING_TICK;
-        if (animFrame < currentOutcome) {//frames where the display is on
+        byte animFrame = ((TIMER_SETTING_TICK * (currentOutcome + 4)) - animTimer.getRemaining()) / TIMER_SETTING_TICK;//0-X
+        if (animFrame == 0) {//the off frame
+          setColor(OFF);
+        } else {//the rest of the frames
           FOREACH_FACE(f) {
-            if (animFrame >= f) {//we are in a frame in which you should be on
+            //should this face be on?
+            if (f < animFrame && f <= currentOutcome) {
               setColorOnFace(makeColorHSB(outcomeColors[currentOutcome - 1], 255, 255), f);
             }
           }
