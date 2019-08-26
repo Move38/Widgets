@@ -64,8 +64,12 @@ void loop() {
 
   if (buttonLongPressed()) {
     currentWidget = (currentWidget + 1) % 4;
-    startWidget();
     pushSignal = GO;
+    if (currentWidget = TIMER) {
+      currentOutcome = 1;
+    } else {
+      startWidget();
+    }
   }
 
   //listen for signals
@@ -402,7 +406,7 @@ void timerDisplay() {
 
       //set the little ticking color on a specific face
       if (animTimer.getRemaining() / 1000 <= 500) {
-        setColorOnFace(WHITE, (animTimer.getRemaining() / 1000) % 6);
+        setColorOnFace(WHITE, 5 - ((animTimer.getRemaining() / 1000) % 6));
       }
       break;
     case ALARM:
