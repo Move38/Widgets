@@ -65,7 +65,7 @@ void loop() {
   if (buttonLongPressed()) {
     currentWidget = (currentWidget + 1) % 4;
     pushSignal = GO;
-    if (currentWidget = TIMER) {
+    if (currentWidget == TIMER) {
       currentOutcome = 1;
     } else {
       startWidget();
