@@ -40,6 +40,7 @@ Timer spinnerFinalPulseTimer;
 
 enum timerModes {SETTING, TIMING, ALARM};
 byte timerMode = SETTING;
+#define TIMER_SETTING_TICK 300
 
 void setup() {
   randomize();
@@ -67,6 +68,7 @@ void loop() {
     pushSignal = GO;
     if (currentWidget == TIMER) {
       currentOutcome = 1;
+      animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 2));
     } else {
       startWidget();
     }
@@ -110,6 +112,9 @@ void pushLoop() {
           //if we're not becoming a TIMER, we gotta also roll/spin/flip
           if (currentWidget != TIMER) {
             startWidget();
+          } else {
+            currentOutcome = 1;
+            animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 2));
           }
         }
       }
@@ -372,6 +377,9 @@ void timerLoop() {
 
   if (animTimer.isExpired()) {
     switch (timerMode) {
+      case SETTING:
+        animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 2));
+        break;
       case TIMING:
         timerMode = ALARM;
         animTimer.set(100);
@@ -388,13 +396,20 @@ void timerLoop() {
 void timerDisplay() {
   switch (timerMode) {
     case SETTING:
-      FOREACH_FACE(f) {
-        byte brightness = 50;
-        if (f <= currentOutcome) {
-          brightness = 255;
+      setColor(OFF);
+
+      //set color thing going
+      {
+        byte animFrame = ((TIMER_SETTING_TICK * (currentOutcome + 2)) - animTimer.getRemaining()) / TIMER_SETTING_TICK;
+        if (animFrame < currentOutcome) {//frames where the display is on
+          FOREACH_FACE(f) {
+            if (animFrame >= f) {//we are in a frame in which you should be on
+              setColorOnFace(makeColorHSB(outcomeColors[currentOutcome - 1], 255, 255), f);
+            }
+          }
         }
-        setColorOnFace(makeColorHSB(outcomeColors[currentOutcome - 1], 255, brightness), f);
       }
+
       setColorOnFace(WHITE, 0);
       break;
     case TIMING:
