@@ -176,11 +176,8 @@ void goLoop() {
       if (!isValueReceivedOnFaceExpired(f)) {//neighbor!
         byte neighborData = getLastValueReceivedOnFace(f);
         if (getGoSignal(neighborData) == GO) {
-          //this neighbor is pushing a widget
-          //if we're not becoming a TIMER, we gotta also roll/spin/flip
-          if (currentWidget != TIMER) {
-            startWidget();
-          }
+          //this neighbor is pushing a go signal
+          startWidget();
         }
       }
     }
@@ -215,17 +212,14 @@ void startWidget() {
       framesRemaining = 20 + random(5);
       animTimer.set(DICE_ROLL_INTERVAL);
       diceFaceDisplay(currentOutcome);
-      goSignal = GO;
       break;
     case SPINNER:
       framesRemaining = random(11) + 36;
       spinInterval = SPINNER_INTERVAL_RESET;
       animTimer.set(spinInterval);
-      goSignal = GO;
       break;
     case COIN:
       framesRemaining = random(3) + 22;
-      goSignal = GO;
       if (animTimer.isExpired()) {//reset the timer if it isn't currently going
         animTimer.set(COIN_FLIP_INTERVAL);
         if (currentOutcome == 0) {
@@ -236,6 +230,7 @@ void startWidget() {
       }
       break;
   }
+  goSignal = GO;//happens regardless of type
 }
 
 void diceLoop() {
