@@ -390,9 +390,11 @@ void timerLoop() {
         break;
       case TIMING:
         timerMode = SETTING;
+        animTimer.set(0);
         break;
       case ALARM:
         timerMode = SETTING;
+        animTimer.set(0);
         break;
     }
   }
