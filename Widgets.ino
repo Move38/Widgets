@@ -56,6 +56,8 @@ void loop() {
     bChange = false;
     if (currentWidget == DICE) {
       diceFaceDisplay(currentOutcome);
+    } else if (currentWidget == SPINNER) {
+      spinnerFaceDisplay(currentOutcome, true);
     }
   }
 
