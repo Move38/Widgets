@@ -83,7 +83,7 @@ void loop() {
   }
 
   if (buttonReleased() && bChange) {
-    changeWidget();
+    changeWidget((currentWidget + 1) % 4);
     bChange = false;
   }
 
@@ -117,11 +117,13 @@ void loop() {
   }
 }
 
-void changeWidget() {
-  currentWidget = (currentWidget + 1) % 4;
+void changeWidget(byte targetWidget) {
+  currentWidget = targetWidget;
+  //currentWidget = (currentWidget + 1) % 4;
   pushSignal = GO;
   if (currentWidget == TIMER) {
     currentOutcome = 1;
+    timerMode = SETTING;
     animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 3));
   } else {
     startWidget();
@@ -136,7 +138,8 @@ void pushLoop() {
         byte neighborData = getLastValueReceivedOnFace(f);
         if (getPushSignal(neighborData) == GO) {
           //this neighbor is pushing a widget
-          currentWidget = getCurrentWidget(neighborData);
+          changeWidget(getCurrentWidget(neighborData));
+          //currentWidget = getCurrentWidget(neighborData);
           pushSignal = GO;
           //if we're not becoming a TIMER, we gotta also roll/spin/flip
           if (currentWidget != TIMER) {
