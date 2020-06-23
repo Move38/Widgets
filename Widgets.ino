@@ -44,6 +44,9 @@ enum timerModes {SETTING, TIMING, ALARM};
 byte timerMode = SETTING;
 #define TIMER_SETTING_TICK 250
 
+byte dieIndex = 0;
+Color diceColors[] = {RED, CYAN, MAGENTA, ORANGE};
+
 void setup() {
   randomize();
   startWidget();
@@ -118,6 +121,9 @@ void loop() {
 }
 
 void changeWidget(byte targetWidget) {
+  if(targetWidget == DICE) {
+    dieIndex = (dieIndex + 1) % 4;
+  }
   currentWidget = targetWidget;
   //currentWidget = (currentWidget + 1) % 4;
   pushSignal = GO;
@@ -255,28 +261,28 @@ void diceFaceDisplay(byte val) {
   setColor(OFF);
   switch (val) {
     case 1:
-      setColorOnFace(RED, orientFace);
+      setColorOnFace(diceColors[dieIndex], orientFace);
       break;
     case 2:
-      setColorOnFace(RED, orientFace);
-      setColorOnFace(RED, (orientFace + 3) % 6);
+      setColorOnFace(diceColors[dieIndex], orientFace);
+      setColorOnFace(diceColors[dieIndex], (orientFace + 3) % 6);
       break;
     case 3:
-      setColorOnFace(RED, orientFace);
-      setColorOnFace(RED, (orientFace + 2) % 6);
-      setColorOnFace(RED, (orientFace + 4) % 6);
+      setColorOnFace(diceColors[dieIndex], orientFace);
+      setColorOnFace(diceColors[dieIndex], (orientFace + 2) % 6);
+      setColorOnFace(diceColors[dieIndex], (orientFace + 4) % 6);
       break;
     case 4:
-      setColor(RED);
+      setColor(diceColors[dieIndex]);
       setColorOnFace(OFF, orientFace);
       setColorOnFace(OFF, (orientFace + 3) % 6);
       break;
     case 5:
-      setColor(RED);
+      setColor(diceColors[dieIndex]);
       setColorOnFace(OFF, orientFace);
       break;
     case 6:
-      setColor(RED);
+      setColor(diceColors[dieIndex]);
       break;
   }
 }
